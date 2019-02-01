@@ -5,13 +5,17 @@
   
   <title>KISS YAGNI</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="website">
+  <meta name="description" content="Node的pipe很好用，比如启动个http的proxy是个很简单的事123456789101112131415161718192021222324252627let httpServer = http.createServer(async (req, res) =&amp;gt; &amp;#123;    // 如果代理服务器需要认证    // &apos;Proxy-Authentication&apos;: &apos;Base &apos;">
+<meta property="og:type" content="article">
 <meta property="og:title" content="KISS YAGNI">
-<meta property="og:url" content="https://ronwe.github.io/index.html">
+<meta property="og:url" content="https://ronwe.github.io/2019/02/01/pipe-multi/index.html">
 <meta property="og:site_name" content="KISS YAGNI">
+<meta property="og:description" content="Node的pipe很好用，比如启动个http的proxy是个很简单的事123456789101112131415161718192021222324252627let httpServer = http.createServer(async (req, res) =&amp;gt; &amp;#123;    // 如果代理服务器需要认证    // &apos;Proxy-Authentication&apos;: &apos;Base &apos;">
 <meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2019-02-01T08:55:38.000Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="KISS YAGNI">
+<meta name="twitter:description" content="Node的pipe很好用，比如启动个http的proxy是个很简单的事123456789101112131415161718192021222324252627let httpServer = http.createServer(async (req, res) =&amp;gt; &amp;#123;    // 如果代理服务器需要认证    // &apos;Proxy-Authentication&apos;: &apos;Base &apos;">
   
     <link rel="alternate" href="/atom.xml" title="KISS YAGNI" type="application/atom+xml">
   
@@ -60,9 +64,7 @@
   </div>
 </header>
       <div class="outer">
-        <section id="main">
-  
-    <article id="post-pipe-multi" class="article article-type-post" itemscope="" itemprop="blogPost">
+        <section id="main"><article id="post-pipe-multi" class="article article-type-post" itemscope="" itemprop="blogPost">
   <div class="article-meta">
     <a href="/2019/02/01/pipe-multi/" class="article-date">
   <time datetime="2019-02-01T08:55:38.000Z" itemprop="datePublished">2019-02-01</time>
@@ -88,74 +90,19 @@
     </footer>
   </div>
   
-</article>
-
-
+    
+<nav id="article-nav">
   
-    <article id="post-magic-call" class="article article-type-post" itemscope="" itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/01/31/magic-call/" class="article-date">
-  <time datetime="2019-01-31T01:56:41.000Z" itemprop="datePublished">2019-01-31</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h3 id="FF的noSuchMethod没普及开，要实现magic-call的效果可以使用Proxy达到目的。"><a href="#FF的noSuchMethod没普及开，要实现magic-call的效果可以使用Proxy达到目的。" class="headerlink" title="FF的noSuchMethod没普及开，要实现magic_call的效果可以使用Proxy达到目的。"></a>FF的<strong>noSuchMethod</strong>没普及开，要实现magic_call的效果可以使用Proxy达到目的。</h3><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MagicClass</span> </span>&#123;</span><br><span class="line">    <span class="keyword">constructor</span>() &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Proxy</span>(<span class="keyword">this</span>, &#123;</span><br><span class="line">            <span class="keyword">get</span>(target, name) &#123;</span><br><span class="line">                <span class="keyword">if</span> (name <span class="keyword">in</span> target) &#123;</span><br><span class="line">                    <span class="keyword">return</span> target[name]</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">return</span> <span class="function">(<span class="params">...args</span>) =&gt;</span> &#123;</span><br><span class="line">                    args.unshift(name)</span><br><span class="line">                    target.__noSuchMethod__.apply(target, args)</span><br><span class="line">                &#125; </span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">    __noSuchMethod__(name, ...args) &#123;</span><br><span class="line">        <span class="built_in">console</span>.log(name, args)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">let</span> inst = <span class="keyword">new</span> MagicClass</span><br><span class="line">inst.hello(<span class="string">'a'</span>)</span><br></pre></td></tr></table></figure>
+  
+    <a href="/2019/01/31/magic-call/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title"></div>
+    </a>
+  
+</nav>
 
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="https://ronwe.github.io/2019/01/31/magic-call/" data-id="cjrltd00e0001kstteo3nql94" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
   
 </article>
-
-
-  
-    <article id="post-hello-world" class="article article-type-post" itemscope="" itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/01/30/hello-world/" class="article-date">
-  <time datetime="2019-01-30T11:59:53.000Z" itemprop="datePublished">2019-01-30</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/01/30/hello-world/">Hello World</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>2019</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="https://ronwe.github.io/2019/01/30/hello-world/" data-id="cjrltd0090000ksttm9yh9xql" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
 
 </section>
         
