@@ -3,15 +3,19 @@
 <head><meta name="generator" content="Hexo 3.8.0">
   <meta charset="utf-8">
   
-  <title>KISS YAGNI</title>
+  <title>魔术对象 | KISS YAGNI</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="website">
-<meta property="og:title" content="KISS YAGNI">
-<meta property="og:url" content="https://ronwe.github.io/index.html">
+  <meta name="description" content="继续尝试Proxy，在模版中套数据结构，经常会有接口没返回约定字段的情况，之前在模版中是要先判断下，利用proxy就可以忽视了 1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859606162function observe(orig">
+<meta property="og:type" content="article">
+<meta property="og:title" content="魔术对象">
+<meta property="og:url" content="https://ronwe.github.io/2019/02/03/magic-object/index.html">
 <meta property="og:site_name" content="KISS YAGNI">
+<meta property="og:description" content="继续尝试Proxy，在模版中套数据结构，经常会有接口没返回约定字段的情况，之前在模版中是要先判断下，利用proxy就可以忽视了 1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859606162function observe(orig">
 <meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2019-02-03T06:34:27.000Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="KISS YAGNI">
+<meta name="twitter:title" content="魔术对象">
+<meta name="twitter:description" content="继续尝试Proxy，在模版中套数据结构，经常会有接口没返回约定字段的情况，之前在模版中是要先判断下，利用proxy就可以忽视了 1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859606162function observe(orig">
   
     <link rel="alternate" href="/atom.xml" title="KISS YAGNI" type="application/atom+xml">
   
@@ -60,9 +64,7 @@
   </div>
 </header>
       <div class="outer">
-        <section id="main">
-  
-    <article id="post-magic-object" class="article article-type-post" itemscope="" itemprop="blogPost">
+        <section id="main"><article id="post-magic-object" class="article article-type-post" itemscope="" itemprop="blogPost">
   <div class="article-meta">
     <a href="/2019/02/03/magic-object/" class="article-date">
   <time datetime="2019-02-03T06:34:27.000Z" itemprop="datePublished">2019-02-03</time>
@@ -75,8 +77,8 @@
       <header class="article-header">
         
   
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/02/03/magic-object/">魔术对象</a>
+    <h1 class="article-title" itemprop="name">
+      魔术对象
     </h1>
   
 
@@ -97,124 +99,19 @@
     </footer>
   </div>
   
-</article>
-
-
+    
+<nav id="article-nav">
   
-    <article id="post-pipe-multi" class="article article-type-post" itemscope="" itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/02/01/pipe-multi/" class="article-date">
-  <time datetime="2019-02-01T08:58:23.000Z" itemprop="datePublished">2019-02-01</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
   
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/02/01/pipe-multi/">readstream pipe到多个writestream</a>
-    </h1>
+    <a href="/2019/02/01/pipe-multi/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">readstream pipe到多个writestream</div>
+    </a>
   
+</nav>
 
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>Node的pipe很好用，比如启动个http的proxy是个很简单的事<br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">let</span> httpServer = http.createServer(<span class="keyword">async</span> (req, res) =&gt; &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果代理服务器需要认证</span></span><br><span class="line">    <span class="comment">// 'Proxy-Authentication': 'Base ' + new Buffer('user:password').toString('base64') // 替换为代理服务器用户名和密码</span></span><br><span class="line">    <span class="keyword">let</span> headers = req.headers || &#123;&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> proxyOpt = &#123;</span><br><span class="line">        host: options.proxy.host, <span class="comment">// 这里是代理服务器</span></span><br><span class="line">        port: options.proxy.port || <span class="number">80</span>, <span class="comment">// 这里是代理服务器端口</span></span><br><span class="line">        path: <span class="string">'http://'</span> + options.proxy.host + req.url,</span><br><span class="line">        method: req.method,</span><br><span class="line">        headers: headers</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> proxy = http.request(proxyOpt, <span class="function"><span class="keyword">function</span>(<span class="params">pres</span>) </span>&#123;</span><br><span class="line">        res.writeHeader(pres.statusCode, pres.headers);</span><br><span class="line">        pres.pipe(res);</span><br><span class="line">    &#125;)</span><br><span class="line">    req.pipe(proxy);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line">httpServer.listen(options.port || <span class="number">7000</span>);</span><br></pre></td></tr></table></figure></p>
-<p>但是pipe只能消费一次，如果需求是把代理的返回内容都记录下来，但是你不能处理相同的流两次,就有点头疼了，当然可以不用pres.pipe(res)，改用下面的方式也能解决问题，但是不够漂亮<br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> result = [];</span><br><span class="line">pres.on(<span class="string">'data'</span>, (chunk) =&gt; &#123;</span><br><span class="line">    result.push(chunk);</span><br><span class="line">&#125;)</span><br><span class="line">pre.on(<span class="string">'end'</span>, () =&gt; &#123;</span><br><span class="line">    <span class="built_in">console</span>.log(result.join(<span class="string">''</span>));</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure></p>
-<h3 id="其实node本身提供了个PassThrough，它是一个简单的实现的一个Transform"><a href="#其实node本身提供了个PassThrough，它是一个简单的实现的一个Transform" class="headerlink" title="其实node本身提供了个PassThrough，它是一个简单的实现的一个Transform"></a>其实node本身提供了个PassThrough，它是一个简单的实现的一个Transform</h3><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> evtPass = <span class="built_in">require</span>(<span class="string">'stream'</span>).PassThrough;</span><br><span class="line">.....</span><br><span class="line"><span class="keyword">let</span> pass = <span class="keyword">new</span> evtPass;</span><br><span class="line">pass.pipe(fs.createWriteStream(<span class="string">'./pass.txt'</span>));</span><br><span class="line"></span><br><span class="line"><span class="keyword">let</span> proxy = http.request(proxyOpt, <span class="function"><span class="keyword">function</span>(<span class="params">pres</span>) </span>&#123;</span><br><span class="line">    res.writeHeader(pres.statusCode, pres.headers);</span><br><span class="line">    pres.pipe(pass);</span><br><span class="line">    pres.pipe(res);</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
-<p>漂亮多了不是</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="https://ronwe.github.io/2019/02/01/pipe-multi/" data-id="cjrltgk2g0001mgttijssnems" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
   
 </article>
-
-
-  
-    <article id="post-magic-call" class="article article-type-post" itemscope="" itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/02/01/magic-call/" class="article-date">
-  <time datetime="2019-02-01T08:57:37.000Z" itemprop="datePublished">2019-02-01</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/02/01/magic-call/">魔术方法</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h3 id="FF的noSuchMethod没普及开，要实现magic-call的效果可以使用Proxy达到目的。"><a href="#FF的noSuchMethod没普及开，要实现magic-call的效果可以使用Proxy达到目的。" class="headerlink" title="FF的noSuchMethod没普及开，要实现magic_call的效果可以使用Proxy达到目的。"></a>FF的<strong>noSuchMethod</strong>没普及开，要实现magic_call的效果可以使用Proxy达到目的。</h3><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MagicClass</span> </span>&#123;</span><br><span class="line">    <span class="keyword">constructor</span>() &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Proxy</span>(<span class="keyword">this</span>, &#123;</span><br><span class="line">            <span class="keyword">get</span>(target, name) &#123;</span><br><span class="line">                <span class="keyword">if</span> (name <span class="keyword">in</span> target) &#123;</span><br><span class="line">                    <span class="keyword">return</span> target[name]</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">return</span> <span class="function">(<span class="params">...args</span>) =&gt;</span> &#123;</span><br><span class="line">                    args.unshift(name)</span><br><span class="line">                    target.__noSuchMethod__.apply(target, args)</span><br><span class="line">                &#125; </span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">    __noSuchMethod__(name, ...args) &#123;</span><br><span class="line">        <span class="built_in">console</span>.log(name, args)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">let</span> inst = <span class="keyword">new</span> MagicClass</span><br><span class="line">inst.hello(<span class="string">'a'</span>)</span><br></pre></td></tr></table></figure>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="https://ronwe.github.io/2019/02/01/magic-call/" data-id="cjrltgk2i0002mgttuzy2gkyy" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-hello-world" class="article article-type-post" itemscope="" itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/01/30/hello-world/" class="article-date">
-  <time datetime="2019-01-30T11:59:53.000Z" itemprop="datePublished">2019-01-30</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/01/30/hello-world/">Hello World</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>2019</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="https://ronwe.github.io/2019/01/30/hello-world/" data-id="cjrltgk2b0000mgtt95x4l1mk" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
 
 </section>
         
