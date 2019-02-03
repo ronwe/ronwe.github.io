@@ -6,13 +6,13 @@
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <link rel="dns-prefetch" href="https://ronwe.github.io">
-  <title>魔术方法 | 雨弓</title>
+  <title>魔术方法 | 雨弓的吱言片语</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="description" content="FF的noSuchMethod没普及开，要实现magic_call的效果可以使用Proxy达到目的。123456789101112131415161718192021class MagicClass &amp;#123;    constructor() &amp;#123;        return new Proxy(this, &amp;#123;            get(target, name) &amp;#1">
 <meta property="og:type" content="article">
 <meta property="og:title" content="魔术方法">
 <meta property="og:url" content="https://ronwe.github.io/2019/02/01/magic-call/index.html">
-<meta property="og:site_name" content="雨弓">
+<meta property="og:site_name" content="雨弓的吱言片语">
 <meta property="og:description" content="FF的noSuchMethod没普及开，要实现magic_call的效果可以使用Proxy达到目的。123456789101112131415161718192021class MagicClass &amp;#123;    constructor() &amp;#123;        return new Proxy(this, &amp;#123;            get(target, name) &amp;#1">
 <meta property="og:locale" content="default">
 <meta property="og:updated_time" content="2019-02-01T08:57:37.000Z">
@@ -20,7 +20,7 @@
 <meta name="twitter:title" content="魔术方法">
 <meta name="twitter:description" content="FF的noSuchMethod没普及开，要实现magic_call的效果可以使用Proxy达到目的。123456789101112131415161718192021class MagicClass &amp;#123;    constructor() &amp;#123;        return new Proxy(this, &amp;#123;            get(target, name) &amp;#1">
   
-    <link rel="alternative" href="/atom.xml" title="雨弓" type="application/atom+xml">
+    <link rel="alternative" href="/atom.xml" title="雨弓的吱言片语" type="application/atom+xml">
   
   
     <link rel="icon" href="/favicon.png">
@@ -53,7 +53,7 @@
 		  <h1 class="header-author"><a href="/">vaal.water</a></h1>
 		</hgroup>
 		
-		<p class="header-subtitle">吱言片语</p>
+		<p class="header-subtitle">雨弓的吱言片语</p>
 		
 
 		<nav class="header-menu">
@@ -70,8 +70,6 @@
     			
             
     			
-    			<a q-on="click: openSlider(e, 'friends')" href="javascript:void(0)">友链</a>
-    			
             
     			
     			<a q-on="click: openSlider(e, 'aboutme')" href="javascript:void(0)">关于我</a>
@@ -84,10 +82,6 @@
 					<a class="github" target="_blank" href="https://github.com/ronwe" title="github"><i class="icon-github"></i></a>
 		        
 					<a class="weibo" target="_blank" href="https://weibo.com/renoch/profile" title="weibo"><i class="icon-weibo"></i></a>
-		        
-					<a class="rss" target="_blank" href="#" title="rss"><i class="icon-rss"></i></a>
-		        
-					<a class="zhihu" target="_blank" href="#" title="zhihu"><i class="icon-zhihu"></i></a>
 		        
 			</div>
 		</nav>
@@ -111,7 +105,7 @@
 			  <h1 class="header-author js-header-author">vaal.water</h1>
 			</hgroup>
 			
-			<p class="header-subtitle"><i class="icon icon-quo-left"></i>吱言片语<i class="icon icon-quo-right"></i></p>
+			<p class="header-subtitle"><i class="icon icon-quo-left"></i>雨弓的吱言片语<i class="icon icon-quo-right"></i></p>
 			
 			
 			
@@ -125,10 +119,6 @@
 						<a class="github" target="_blank" href="https://github.com/ronwe" title="github"><i class="icon-github"></i></a>
 			        
 						<a class="weibo" target="_blank" href="https://weibo.com/renoch/profile" title="weibo"><i class="icon-weibo"></i></a>
-			        
-						<a class="rss" target="_blank" href="#" title="rss"><i class="icon-rss"></i></a>
-			        
-						<a class="zhihu" target="_blank" href="#" title="zhihu"><i class="icon-zhihu"></i></a>
 			        
 				</div>
 			</nav>
@@ -361,8 +351,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
       
     
       
-      
-      
     
       
       
@@ -374,15 +362,13 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
     
     
       
-      <li style="width: 33.333333333333336%" q-on="click: openSlider(e, 'innerArchive')"><a href="javascript:void(0)" q-class="active:innerArchive">所有文章</a></li>
+      <li style="width: 50%" q-on="click: openSlider(e, 'innerArchive')"><a href="javascript:void(0)" q-class="active:innerArchive">所有文章</a></li>
       
         
       
-      <li style="width: 33.333333333333336%" q-on="click: openSlider(e, 'friends')"><a href="javascript:void(0)" q-class="active:friends">友链</a></li>
-      
         
       
-      <li style="width: 33.333333333333336%" q-on="click: openSlider(e, 'aboutme')"><a href="javascript:void(0)" q-class="active:aboutme">关于我</a></li>
+      <li style="width: 50%" q-on="click: openSlider(e, 'aboutme')"><a href="javascript:void(0)" q-class="active:aboutme">关于我</a></li>
       
         
     </ul>
@@ -446,23 +432,11 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
     
 
     
-    	<section class="tools-section tools-section-friends" q-show="friends">
-  		
-        <ul class="search-ul">
-          
-            <li class="search-li">
-              <a href="http://www.blueidea.com/" target="_blank" class="search-title"><i class="icon-quo-left icon"></i>友情链接</a>
-            </li>
-          
-        </ul>
-  		
-    	</section>
-    
 
     
     	<section class="tools-section tools-section-me" q-show="aboutme">
   	  	
-  	  		<div class="aboutme-wrap" id="js-aboutme">很惭愧&lt;br&gt;&lt;br&gt;只做了一点微小的工作&lt;br&gt;谢谢大家</div>
+  	  		<div class="aboutme-wrap" id="js-aboutme">零星代码收集 by 雨弓</div>
   	  	
     	</section>
     
