@@ -8,17 +8,17 @@
   <link rel="dns-prefetch" href="https://ronwe.github.io">
   <title>nginx try_files的一个小坑 | 雨弓的吱言片语</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="nginx做node的反向代理，打算实现如果node挂掉了，nginx继续提供静态服务，原以为proxy_intercept_errors打开，设下error_page就好，配置如下  1234567891011location / &amp;#123;    proxy_pass http://127.0.0.1:3000;    proxy_intercept_errors on;    proxy">
+  <meta name="description" content="nginx做node的反向代理，打算实现如果node挂掉了，nginx继续提供静态服务，原以为proxy_intercept_errors打开，设下error_page就好，配置如下 1234567891011location / &amp;#123;    proxy_pass http://127.0.0.1:3000;    proxy_intercept_errors on;    proxy_r">
 <meta property="og:type" content="article">
 <meta property="og:title" content="nginx try_files的一个小坑">
-<meta property="og:url" content="https://ronwe.github.io/2019/02/19/nginx-try-files-bug/index.html">
+<meta property="og:url" content="https://ronwe.github.io/2019/02/20/nginx-try-files-bug/index.html">
 <meta property="og:site_name" content="雨弓的吱言片语">
-<meta property="og:description" content="nginx做node的反向代理，打算实现如果node挂掉了，nginx继续提供静态服务，原以为proxy_intercept_errors打开，设下error_page就好，配置如下  1234567891011location / &amp;#123;    proxy_pass http://127.0.0.1:3000;    proxy_intercept_errors on;    proxy">
+<meta property="og:description" content="nginx做node的反向代理，打算实现如果node挂掉了，nginx继续提供静态服务，原以为proxy_intercept_errors打开，设下error_page就好，配置如下 1234567891011location / &amp;#123;    proxy_pass http://127.0.0.1:3000;    proxy_intercept_errors on;    proxy_r">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2019-02-19T11:56:02.158Z">
+<meta property="og:updated_time" content="2019-02-20T02:26:14.223Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="nginx try_files的一个小坑">
-<meta name="twitter:description" content="nginx做node的反向代理，打算实现如果node挂掉了，nginx继续提供静态服务，原以为proxy_intercept_errors打开，设下error_page就好，配置如下  1234567891011location / &amp;#123;    proxy_pass http://127.0.0.1:3000;    proxy_intercept_errors on;    proxy">
+<meta name="twitter:description" content="nginx做node的反向代理，打算实现如果node挂掉了，nginx继续提供静态服务，原以为proxy_intercept_errors打开，设下error_page就好，配置如下 1234567891011location / &amp;#123;    proxy_pass http://127.0.0.1:3000;    proxy_intercept_errors on;    proxy_r">
   
     <link rel="alternative" href="/atom.xml" title="雨弓的吱言片语" type="application/atom+xml">
   
@@ -154,44 +154,22 @@
   
 
         
-        <a href="/2019/02/19/nginx-try-files-bug/" class="archive-article-date">
-  	<time datetime="2019-02-19T11:56:02.157Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-02-19</time>
+        <a href="/2019/02/20/nginx-try-files-bug/" class="archive-article-date">
+  	<time datetime="2019-02-20T02:26:14.223Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-02-20</time>
 </a>
         
       </header>
     
     <div class="article-entry" itemprop="articleBody">
       
-        
-nginx做node的反向代理，打算实现如果node挂掉了，nginx继续提供静态服务，原以为proxy_intercept_errors打开，设下error_page就好，配置如下
-
+        <p>nginx做node的反向代理，打算实现如果node挂掉了，nginx继续提供静态服务，原以为proxy_intercept_errors打开，设下error_page就好，配置如下</p>
 <figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">location</span> / &#123;</span><br><span class="line">    <span class="attribute">proxy_pass</span> http://127.0.0.1:3000;</span><br><span class="line">    <span class="attribute">proxy_intercept_errors</span> <span class="literal">on</span>;</span><br><span class="line">    <span class="attribute">proxy_redirect</span> <span class="literal">off</span>;</span><br><span class="line">    <span class="attribute">error_page</span> <span class="number">500</span> <span class="number">502</span>  <span class="variable">@handle_error</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="attribute">location</span>  <span class="variable">@handle_error</span> &#123;</span><br><span class="line">    <span class="attribute">root</span> html;</span><br><span class="line">    <span class="attribute">try_files</span> <span class="variable">$uri</span> <span class="variable">$uri</span>/ /index.html;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-  try_files $uri $uri/ /index.html @404 = 404; 是希望如果访问/abc.txt 如果html下有就返回 否则返回默认的index.html。 <br> 
-
-如果path有指定内容都很正常，当path 为/ 时，问题出现了，nginx报502，打开error_log，发现有两条记录:  
-
-http://127.0.0.1:3000/ 和 http://127.0.0.1:3000/index.html  <br>  
-
-    <p>
-  开始以为是try_files使用不当（try_files最后一个参数会做个内部转向），将配置改成：<br>
-
-try_files $uri $uri/ /index.html @404 = 404;  <br>
-
-  依然502，尝试google也没找到解答，而且配置改成  try_files $uri $uri/ /blahblah.html @404 = 404; 依然是有个 http://127.0.0.1:3000/index.html
-的错误 导致502.  <br>
-    </p>
-
-    <p>
-  最后灵光一现 会不会是$uri等于/ try_files时 $uri/ ==> / ==> /index.html(这个是nginx的默认文件), 修改下去掉 $uri/ 果然好了  <br>
-   </p>
-
-   
-
-
-
+<p>  try_files $uri $uri/ /index.html @404 = 404; 是希望如果访问/abc.txt 如果html下有就返回 否则返回默认的index.html。 <br> </p>
+<p>如果path有指定内容都很正常，当path 为/ 时，问题出现了，nginx报502，打开error_log，发现有两条记录:  </p>
+<h3 id="http-127-0-0-1-3000-和-http-127-0-0-1-3000-index-html"><a href="#http-127-0-0-1-3000-和-http-127-0-0-1-3000-index-html" class="headerlink" title="http://127.0.0.1:3000/ 和 http://127.0.0.1:3000/index.html  "></a><a href="http://127.0.0.1:3000/" target="_blank" rel="noopener">http://127.0.0.1:3000/</a> 和 <a href="http://127.0.0.1:3000/index.html" target="_blank" rel="noopener">http://127.0.0.1:3000/index.html</a>  <br></h3><p>  开始以为是try_files使用不当（try_files最后一个参数会做个内部转向），将配置改成：<br></p>
+<h3 id="try-files-uri-uri-index-html-404-404"><a href="#try-files-uri-uri-index-html-404-404" class="headerlink" title="try_files $uri $uri/ /index.html @404 = 404;  "></a>try_files $uri $uri/ /index.html @404 = 404;  <br></h3><p>  依然502，尝试google也没找到解答，而且配置改成  try_files $uri $uri/ /blahblah.html @404 = 404; 依然是有个 <a href="http://127.0.0.1:3000/index.html" target="_blank" rel="noopener">http://127.0.0.1:3000/index.html</a><br>的错误 导致502.  <br></p>
+<p>  最后灵光一现 会不会是$uri等于/ try_files时 $uri/ ==&gt; / ==&gt; /index.html(这个是nginx的默认文件), 修改下去掉 $uri/ 果然好了  <br></p>
 <figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">location</span> / &#123;</span><br><span class="line">    <span class="attribute">proxy_pass</span> http://127.0.0.1:3000;</span><br><span class="line">    <span class="attribute">proxy_intercept_errors</span> <span class="literal">on</span>;</span><br><span class="line">    <span class="attribute">proxy_redirect</span> <span class="literal">off</span>;</span><br><span class="line">    <span class="attribute">error_page</span> <span class="number">500</span> <span class="number">502</span>  <span class="variable">@handle_error</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="attribute">location</span>  <span class="variable">@handle_error</span> &#123;</span><br><span class="line">    <span class="attribute">root</span> html;</span><br><span class="line">    <span class="attribute">try_files</span> <span class="variable">$uri</span> /index.html /<span class="number">404</span>.html = <span class="number">404</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
 
       
 
@@ -271,7 +249,7 @@ try_files $uri $uri/ /index.html @404 = 404;  <br>
     <a class="close js-modal-close" href="javascript:;"><i class="icon icon-close"></i></a>
     <p>扫一扫，分享到微信</p>
     <div class="wx-qrcode">
-      <img src="//pan.baidu.com/share/qrcode?url=https://ronwe.github.io/2019/02/19/nginx-try-files-bug/" alt="微信分享二维码">
+      <img src="//pan.baidu.com/share/qrcode?url=https://ronwe.github.io/2019/02/20/nginx-try-files-bug/" alt="微信分享二维码">
     </div>
 </div>
 
