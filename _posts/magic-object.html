@@ -1,0 +1,68 @@
+---
+title: 魔术对象 
+---
+继续尝试Proxy，在模版中套数据结构，经常会有接口没返回约定字段的情况，之前在模版中是要先判断下，利用proxy就可以忽视了
+```javascript
+function observe(origin, watcher) {
+    let keyChain = [];
+    let prevTarget = [];
+    function magicObj(obj) {
+        if ('object' !== typeof obj) {
+            return obj;
+        }
+        let handler = {
+            set: (target, key, value) => {
+                keyChain.push(key);
+                Reflect.set(target, key, value);
+                watcher && watcher(keyChain);
+            },
+            get: (target, key) => {
+                if (target === origin) {
+                    keyChain.length = 0;
+                    prevTarget.length = 0;
+                }
+                prevTarget.push(target);
+                keyChain.push(key);
+                if (['push', 'pop', 'unshift', 'shift'].includes(key)) {
+                    let opTarget = target;
+                    if (!target[key]) {
+                        // 强转当前节点成数组
+                        opTarget = prevTarget[prevTarget.length - 2][keyChain[keyChain.length - 2]] =  magicObj([], watcher);
+                    }
+                    return function(pushIn) {
+                        opTarget[key]( magicObj(pushIn, watcher) );
+                        watcher && watcher(keyChain.slice(0, -2));
+                        return opTarget;
+                    }
+                } else if (key in target) {
+                    return target[key];
+                } else {
+                    // 类型错了，屏蔽模版报错
+                    if (['map', 'forEach'].includes(key)) {
+                        return function() {
+                            return magicObj([], watcher);
+                        };
+                    } else {
+                        target[key] = magicObj({}, watcher);
+
+                        return target[key];
+                    }
+                }
+            }
+
+        };
+
+        let proxy = new Proxy(obj, handler);
+        return proxy;
+    }
+
+    return magicObj(origin);
+}
+let o = {};
+let p = observe(o , (keys) => {
+	console.log('change',keys);
+});
+p.x.y.z = 123; //随意层级
+p.list.push({aa: 123});
+p.list.push({aa: 456});
+```
