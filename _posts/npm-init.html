@@ -1,0 +1,80 @@
+---
+title: npm init 应用 
+---
+在研究web components的开发工具时，发现其中stencil.js这个工具的初始化用的是：
+
+```javascript
+    npm init stencil
+```
+会响应交互
+```javascript
+    ? Pick a starter › - Use arrow-keys. Return to submit.
+
+    ❯  ionic-pwa     Everything you need to build fast, production ready PWAs
+       app           Minimal starter for building a Stencil app or website
+       component     Collection of web components that can be used anywhere
+```
+
+之前只用npm init来初始化package.json, 用来初始项目还没玩过，google找到一篇介绍npm的blog,  创建 ~/.npm-init.js 文件可以自定义npm init 行为
+```javascript
+    const desc = prompt('description?', 'A new package...')
+    const bar = prompt('bar?', '')
+    const count = prompt('count?', '42')
+
+    module.exports = {
+      key: 'value',
+      foo: {
+        bar: bar,
+        count: count
+      },
+      name: prompt('name?', process.cwd().split('/').pop()),
+      version: prompt('version?', '0.1.0'),
+      description: desc,
+      main: 'index.js',
+    }
+```
+在其它目录下执行 npm init 将会得到这样的 package.json:
+```javascript
+    {
+      "key": "value",
+      "foo": {
+        "bar": "",
+        "count": "42"
+      },
+      "name": "hello",
+      "version": "0.1.0",
+      "description": "A new package...",
+      "main": "index.js"
+    }
+```
+
+那stencil.js是这么实现的吗，查找.npm-init.js 并未找到.  <br/>
+换个思路 npm init 后跟什么都可以吗？ 尝试执行 npm init abc  <br/>
+得到这么个错误
+```javascript
+    npm ERR! code E404
+    npm ERR! 404 Not Found: create-abc@latest
+
+    npm ERR! A complete log of this run can be found in:
+    npm ERR!     /Users/rongweiwei/.npm/_logs/2019-04-10T07_09_28_527Z-debug.log
+    安装 create-abc@latest 失败，错误代码：1
+```
+发现它是去拉取create-abc这个安装包，查看错误日志，确定执行的命令
+```javascript
+    0 info it worked if it ends with ok
+    1 verbose cli [ '/usr/local/bin/node',
+    1 verbose cli   '/usr/local/lib/node_modules/npm/bin/npm-cli.js',
+    1 verbose cli   'install',
+    1 verbose cli   'create-abc@latest',
+    1 verbose cli   '--global',
+    1 verbose cli   '--prefix',
+    1 verbose cli   '/Users/rongweiwei/.npm/_npx/98626',
+    1 verbose cli   '--loglevel',
+    1 verbose cli   'error',
+    1 verbose cli   '--json' ]
+```
+疑问解开了，原来npm init + 参数 等于执行 npx create-参数,执行 npx create-stenci ，果然如此 <br/>
+
+补充：npx 这个命令是一键执行远程,可以玩下这个彩蛋: npx workin-hard
+
+
