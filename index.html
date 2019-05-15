@@ -143,6 +143,73 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-reuse-request-withoutkeep" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/05/15/reuse-request-withoutkeep/">并发时复用请求</a>
+    </h1>
+  
+
+        
+        <a href="/2019/05/15/reuse-request-withoutkeep/" class="archive-article-date">
+  	<time datetime="2019-05-15T09:33:22.063Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-15</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存，-假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了，-其它请求的就没必要等待了"><a href="#请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存，-假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了，-其它请求的就没必要等待了" class="headerlink" title="请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存， 假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了， 其它请求的就没必要等待了"></a>请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存， 假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了， 其它请求的就没必要等待了</h3><p>未处理前并发的请求只能等一个个返回</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">fakeQuery</span>(<span class="params">t</span>)</span>&#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line">		setTimeout(<span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">			resolve(<span class="built_in">Math</span>.random() * <span class="number">1000</span>);</span><br><span class="line">		&#125;, t*<span class="number">1000</span>);</span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Q</span>(<span class="params">p, t</span>) </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line"></span><br><span class="line">        fakeQuery(t).then( <span class="function">(<span class="params">result</span>) =&gt;</span> &#123;</span><br><span class="line">            resolve(result);</span><br><span class="line">        &#125;)</span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.time(<span class="string">'q1'</span>);</span><br><span class="line"><span class="built_in">console</span>.time(<span class="string">'q2'</span>);</span><br><span class="line">Q(<span class="string">'a'</span>, <span class="number">5</span>).then( <span class="function">(<span class="params">ret</span>) =&gt;</span> &#123;</span><br><span class="line">	<span class="built_in">console</span>.log(ret);</span><br><span class="line">	<span class="built_in">console</span>.timeEnd(<span class="string">'q1'</span>);</span><br><span class="line">&#125;);</span><br><span class="line">Q(<span class="string">'a'</span>, <span class="number">10</span>).then( <span class="function">(<span class="params">ret</span>) =&gt;</span> &#123;</span><br><span class="line"></span><br><span class="line">	<span class="built_in">console</span>.log(ret);</span><br><span class="line">	<span class="built_in">console</span>.timeEnd(<span class="string">'q2'</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+<p>可以使用消息方式优化,node有原生的emitter,其实浏览器端也有能实现相同效果的api</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyEmitter</span> <span class="keyword">extends</span> <span class="title">EventTarget</span>  </span>&#123;</span><br><span class="line">  fire(name, value) &#123;</span><br><span class="line">    <span class="keyword">this</span>.dispatchEvent(<span class="keyword">new</span> CustomEvent(name , &#123;<span class="attr">detail</span>: value&#125;));</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">fakeQuery</span>(<span class="params">t</span>)</span>&#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line">		setTimeout(<span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">			resolve(<span class="built_in">Math</span>.random() * <span class="number">1000</span>);</span><br><span class="line">		&#125;, t*<span class="number">1000</span>);</span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> emitter = <span class="keyword">new</span> MyEmitter();</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Q</span>(<span class="params">p, t</span>) </span>&#123;</span><br><span class="line"></span><br><span class="line">    fakeQuery(t).then( <span class="function">(<span class="params">result</span>) =&gt;</span> &#123;</span><br><span class="line">        emitter.fire(p, result);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line"></span><br><span class="line">	    <span class="function"><span class="keyword">function</span> <span class="title">done</span>(<span class="params">e</span>) </span>&#123;</span><br><span class="line">		   resolve(e.detail);</span><br><span class="line">		   emitter.removeEventListener(p, done);</span><br><span class="line">		&#125;;</span><br><span class="line">		emitter.addEventListener(p, done);</span><br><span class="line"></span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.time(<span class="string">'q1'</span>);</span><br><span class="line"><span class="built_in">console</span>.time(<span class="string">'q2'</span>);</span><br><span class="line">Q(<span class="string">'a'</span>, <span class="number">5</span>).then( <span class="function">(<span class="params">ret</span>) =&gt;</span> &#123;</span><br><span class="line">	<span class="built_in">console</span>.log(ret);</span><br><span class="line">	<span class="built_in">console</span>.timeEnd(<span class="string">'q1'</span>);</span><br><span class="line">&#125;);</span><br><span class="line">Q(<span class="string">'a'</span>, <span class="number">10</span>).then( <span class="function">(<span class="params">ret</span>) =&gt;</span> &#123;</span><br><span class="line">	<span class="built_in">console</span>.log(ret);</span><br><span class="line">	<span class="built_in">console</span>.timeEnd(<span class="string">'q2'</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+<p>代码很简单，侧重在事件的思想</p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/05/15/reuse-request-withoutkeep/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-npm-init" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
   <div class="article-inner">
     

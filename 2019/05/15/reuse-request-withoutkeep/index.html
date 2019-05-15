@@ -6,19 +6,19 @@
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <link rel="dns-prefetch" href="https://ronwe.github.io">
-  <title>npm init 应用 | 雨弓的吱言片语</title>
+  <title>并发时复用请求 | 雨弓的吱言片语</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="在研究web components的开发工具时，发现其中stencil.js这个工具的初始化用的是：  1npm init stencil  会响应交互 12345? Pick a starter › - Use arrow-keys. Return to submit.❯  ionic-pwa     Everything you need to build fast, production r">
+  <meta name="description" content="请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存， 假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了， 其它请求的就没必要等待了未处理前并发的请求只能等一个个返回 1234567891011121314151617181920212223242526272829function fakeQuery(t)&amp;#123;	return new Promis">
 <meta property="og:type" content="article">
-<meta property="og:title" content="npm init 应用">
-<meta property="og:url" content="https://ronwe.github.io/2019/04/10/npm-init/index.html">
+<meta property="og:title" content="并发时复用请求">
+<meta property="og:url" content="https://ronwe.github.io/2019/05/15/reuse-request-withoutkeep/index.html">
 <meta property="og:site_name" content="雨弓的吱言片语">
-<meta property="og:description" content="在研究web components的开发工具时，发现其中stencil.js这个工具的初始化用的是：  1npm init stencil  会响应交互 12345? Pick a starter › - Use arrow-keys. Return to submit.❯  ionic-pwa     Everything you need to build fast, production r">
+<meta property="og:description" content="请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存， 假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了， 其它请求的就没必要等待了未处理前并发的请求只能等一个个返回 1234567891011121314151617181920212223242526272829function fakeQuery(t)&amp;#123;	return new Promis">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2019-04-10T07:22:49.666Z">
+<meta property="og:updated_time" content="2019-05-15T09:33:22.063Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="npm init 应用">
-<meta name="twitter:description" content="在研究web components的开发工具时，发现其中stencil.js这个工具的初始化用的是：  1npm init stencil  会响应交互 12345? Pick a starter › - Use arrow-keys. Return to submit.❯  ionic-pwa     Everything you need to build fast, production r">
+<meta name="twitter:title" content="并发时复用请求">
+<meta name="twitter:description" content="请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存， 假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了， 其它请求的就没必要等待了未处理前并发的请求只能等一个个返回 1234567891011121314151617181920212223242526272829function fakeQuery(t)&amp;#123;	return new Promis">
   
     <link rel="alternative" href="/atom.xml" title="雨弓的吱言片语" type="application/atom+xml">
   
@@ -142,52 +142,31 @@
             <canvas data-colors="#eaeaea" data-sectionHeight="100" data-contentId="js-content" id="myCanvas1" class="anm-canvas"></canvas>
           </div>
           <div id="js-content" class="content-ll">
-            <article id="post-npm-init" class="article article-type-post " itemscope="" itemprop="blogPost">
+            <article id="post-reuse-request-withoutkeep" class="article article-type-post " itemscope="" itemprop="blogPost">
   <div class="article-inner">
     
       <header class="article-header">
         
   
     <h1 class="article-title" itemprop="name">
-      npm init 应用
+      并发时复用请求
     </h1>
   
 
         
-        <a href="/2019/04/10/npm-init/" class="archive-article-date">
-  	<time datetime="2019-04-10T07:22:49.665Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-04-10</time>
+        <a href="/2019/05/15/reuse-request-withoutkeep/" class="archive-article-date">
+  	<time datetime="2019-05-15T09:33:22.063Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-15</time>
 </a>
         
       </header>
     
     <div class="article-entry" itemprop="articleBody">
       
-        在研究web components的开发工具时，发现其中stencil.js这个工具的初始化用的是：
-
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm init stencil</span><br></pre></td></tr></table></figure>
-
-会响应交互
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">? Pick a starter › - Use arrow-keys. Return to submit.</span><br><span class="line"></span><br><span class="line">❯  ionic-pwa     Everything you need to build fast, production ready PWAs</span><br><span class="line">   app           Minimal starter <span class="keyword">for</span> building a Stencil app or website</span><br><span class="line">   component     Collection <span class="keyword">of</span> web components that can be used anywhere</span><br></pre></td></tr></table></figure>
-
-之前只用npm init来初始化package.json, 用来初始项目还没玩过，google找到一篇介绍npm的blog,  创建 ~/.npm-init.js 文件可以自定义npm init 行为
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> desc = prompt(<span class="string">'description?'</span>, <span class="string">'A new package...'</span>)</span><br><span class="line"><span class="keyword">const</span> bar = prompt(<span class="string">'bar?'</span>, <span class="string">''</span>)</span><br><span class="line"><span class="keyword">const</span> count = prompt(<span class="string">'count?'</span>, <span class="string">'42'</span>)</span><br><span class="line"></span><br><span class="line"><span class="built_in">module</span>.exports = &#123;</span><br><span class="line">  key: <span class="string">'value'</span>,</span><br><span class="line">  foo: &#123;</span><br><span class="line">    bar: bar,</span><br><span class="line">    count: count</span><br><span class="line">  &#125;,</span><br><span class="line">  name: prompt(<span class="string">'name?'</span>, process.cwd().split(<span class="string">'/'</span>).pop()),</span><br><span class="line">  version: prompt(<span class="string">'version?'</span>, <span class="string">'0.1.0'</span>),</span><br><span class="line">  description: desc,</span><br><span class="line">  main: <span class="string">'index.js'</span>,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-在其它目录下执行 npm init 将会得到这样的 package.json:
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="string">"key"</span>: <span class="string">"value"</span>,</span><br><span class="line">  <span class="string">"foo"</span>: &#123;</span><br><span class="line">    <span class="string">"bar"</span>: <span class="string">""</span>,</span><br><span class="line">    <span class="string">"count"</span>: <span class="string">"42"</span></span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">"name"</span>: <span class="string">"hello"</span>,</span><br><span class="line">  <span class="string">"version"</span>: <span class="string">"0.1.0"</span>,</span><br><span class="line">  <span class="string">"description"</span>: <span class="string">"A new package..."</span>,</span><br><span class="line">  <span class="string">"main"</span>: <span class="string">"index.js"</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-那stencil.js是这么实现的吗，查找.npm-init.js 并未找到.  <br>
-换个思路 npm init 后跟什么都可以吗？ 尝试执行 npm init abc  <br>
-得到这么个错误
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">npm ERR! code E404</span><br><span class="line">npm ERR! <span class="number">404</span> Not Found: create-abc@latest</span><br><span class="line"></span><br><span class="line">npm ERR! A complete log <span class="keyword">of</span> <span class="keyword">this</span> run can be found <span class="keyword">in</span>:</span><br><span class="line">npm ERR!     <span class="regexp">/Users/</span>rongweiwei/.npm/_logs/<span class="number">2019</span><span class="number">-04</span><span class="number">-10</span>T07_09_28_527Z-debug.log</span><br><span class="line">安装 create-abc@latest 失败，错误代码：<span class="number">1</span></span><br></pre></td></tr></table></figure>
-
-发现它是去拉取create-abc这个安装包，查看错误日志，确定执行的命令
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">0</span> info it worked <span class="keyword">if</span> it ends <span class="keyword">with</span> ok</span><br><span class="line"><span class="number">1</span> verbose cli [ <span class="string">'/usr/local/bin/node'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'/usr/local/lib/node_modules/npm/bin/npm-cli.js'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'install'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'create-abc@latest'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'--global'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'--prefix'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'/Users/rongweiwei/.npm/_npx/98626'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'--loglevel'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'error'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'--json'</span> ]</span><br></pre></td></tr></table></figure>
-
-疑问解开了，原来npm init + 参数 等于执行 npx create-参数,执行 npx create-stenci ，果然如此 <br>
-
-补充：npx 这个命令是一键执行远程,可以玩下这个彩蛋:  <b>npx workin-hard</b>
-
-
+        <h3 id="请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存，-假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了，-其它请求的就没必要等待了"><a href="#请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存，-假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了，-其它请求的就没必要等待了" class="headerlink" title="请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存， 假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了， 其它请求的就没必要等待了"></a>请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存， 假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了， 其它请求的就没必要等待了</h3><p>未处理前并发的请求只能等一个个返回</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">fakeQuery</span>(<span class="params">t</span>)</span>&#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line">		setTimeout(<span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">			resolve(<span class="built_in">Math</span>.random() * <span class="number">1000</span>);</span><br><span class="line">		&#125;, t*<span class="number">1000</span>);</span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Q</span>(<span class="params">p, t</span>) </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line"></span><br><span class="line">        fakeQuery(t).then( <span class="function">(<span class="params">result</span>) =&gt;</span> &#123;</span><br><span class="line">            resolve(result);</span><br><span class="line">        &#125;)</span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.time(<span class="string">'q1'</span>);</span><br><span class="line"><span class="built_in">console</span>.time(<span class="string">'q2'</span>);</span><br><span class="line">Q(<span class="string">'a'</span>, <span class="number">5</span>).then( <span class="function">(<span class="params">ret</span>) =&gt;</span> &#123;</span><br><span class="line">	<span class="built_in">console</span>.log(ret);</span><br><span class="line">	<span class="built_in">console</span>.timeEnd(<span class="string">'q1'</span>);</span><br><span class="line">&#125;);</span><br><span class="line">Q(<span class="string">'a'</span>, <span class="number">10</span>).then( <span class="function">(<span class="params">ret</span>) =&gt;</span> &#123;</span><br><span class="line"></span><br><span class="line">	<span class="built_in">console</span>.log(ret);</span><br><span class="line">	<span class="built_in">console</span>.timeEnd(<span class="string">'q2'</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+<p>可以使用消息方式优化,node有原生的emitter,其实浏览器端也有能实现相同效果的api</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyEmitter</span> <span class="keyword">extends</span> <span class="title">EventTarget</span>  </span>&#123;</span><br><span class="line">  fire(name, value) &#123;</span><br><span class="line">    <span class="keyword">this</span>.dispatchEvent(<span class="keyword">new</span> CustomEvent(name , &#123;<span class="attr">detail</span>: value&#125;));</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">fakeQuery</span>(<span class="params">t</span>)</span>&#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line">		setTimeout(<span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">			resolve(<span class="built_in">Math</span>.random() * <span class="number">1000</span>);</span><br><span class="line">		&#125;, t*<span class="number">1000</span>);</span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> emitter = <span class="keyword">new</span> MyEmitter();</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Q</span>(<span class="params">p, t</span>) </span>&#123;</span><br><span class="line"></span><br><span class="line">    fakeQuery(t).then( <span class="function">(<span class="params">result</span>) =&gt;</span> &#123;</span><br><span class="line">        emitter.fire(p, result);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line"></span><br><span class="line">	    <span class="function"><span class="keyword">function</span> <span class="title">done</span>(<span class="params">e</span>) </span>&#123;</span><br><span class="line">		   resolve(e.detail);</span><br><span class="line">		   emitter.removeEventListener(p, done);</span><br><span class="line">		&#125;;</span><br><span class="line">		emitter.addEventListener(p, done);</span><br><span class="line"></span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.time(<span class="string">'q1'</span>);</span><br><span class="line"><span class="built_in">console</span>.time(<span class="string">'q2'</span>);</span><br><span class="line">Q(<span class="string">'a'</span>, <span class="number">5</span>).then( <span class="function">(<span class="params">ret</span>) =&gt;</span> &#123;</span><br><span class="line">	<span class="built_in">console</span>.log(ret);</span><br><span class="line">	<span class="built_in">console</span>.timeEnd(<span class="string">'q1'</span>);</span><br><span class="line">&#125;);</span><br><span class="line">Q(<span class="string">'a'</span>, <span class="number">10</span>).then( <span class="function">(<span class="params">ret</span>) =&gt;</span> &#123;</span><br><span class="line">	<span class="built_in">console</span>.log(ret);</span><br><span class="line">	<span class="built_in">console</span>.timeEnd(<span class="string">'q2'</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+<p>代码很简单，侧重在事件的思想</p>
 
       
 
@@ -267,7 +246,7 @@
     <a class="close js-modal-close" href="javascript:;"><i class="icon icon-close"></i></a>
     <p>扫一扫，分享到微信</p>
     <div class="wx-qrcode">
-      <img src="//pan.baidu.com/share/qrcode?url=https://ronwe.github.io/2019/04/10/npm-init/" alt="微信分享二维码">
+      <img src="//pan.baidu.com/share/qrcode?url=https://ronwe.github.io/2019/05/15/reuse-request-withoutkeep/" alt="微信分享二维码">
     </div>
 </div>
 
@@ -281,18 +260,9 @@
   
 <nav id="article-nav">
   
-    <a href="/2019/05/15/reuse-request-withoutkeep/" id="article-nav-newer" class="article-nav-link-wrap">
-      <i class="icon-circle-left"></i>
-      <div class="article-nav-title">
-        
-          并发时复用请求
-        
-      </div>
-    </a>
   
-  
-    <a href="/2019/02/20/nginx-try-files-bug/" id="article-nav-older" class="article-nav-link-wrap">
-      <div class="article-nav-title">nginx try_files的一个小坑</div>
+    <a href="/2019/04/10/npm-init/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">npm init 应用</div>
       <i class="icon-circle-right"></i>
     </a>
   
