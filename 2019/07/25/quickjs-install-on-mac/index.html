@@ -8,17 +8,17 @@
   <link rel="dns-prefetch" href="https://ronwe.github.io">
   <title>mac上安装quickjs的报错解决 | 雨弓的吱言片语</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="下载安装包 https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz， 解压进入后执行make install出现如下报错， 123ld: symbol(s) not found for architecture i386clang: error: linker command failed with exit code 1 (use -v to">
+  <meta name="description" content="下载安装包 https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz， 解压进入后执行make 出现如下报错， 123ld: symbol(s) not found for architecture i386clang: error: linker command failed with exit code 1 (use -v to see inv">
 <meta property="og:type" content="article">
 <meta property="og:title" content="mac上安装quickjs的报错解决">
 <meta property="og:url" content="https://ronwe.github.io/2019/07/25/quickjs-install-on-mac/index.html">
 <meta property="og:site_name" content="雨弓的吱言片语">
-<meta property="og:description" content="下载安装包 https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz， 解压进入后执行make install出现如下报错， 123ld: symbol(s) not found for architecture i386clang: error: linker command failed with exit code 1 (use -v to">
+<meta property="og:description" content="下载安装包 https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz， 解压进入后执行make 出现如下报错， 123ld: symbol(s) not found for architecture i386clang: error: linker command failed with exit code 1 (use -v to see inv">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2019-07-25T09:40:26.325Z">
+<meta property="og:updated_time" content="2019-07-25T09:55:41.786Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="mac上安装quickjs的报错解决">
-<meta name="twitter:description" content="下载安装包 https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz， 解压进入后执行make install出现如下报错， 123ld: symbol(s) not found for architecture i386clang: error: linker command failed with exit code 1 (use -v to">
+<meta name="twitter:description" content="下载安装包 https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz， 解压进入后执行make 出现如下报错， 123ld: symbol(s) not found for architecture i386clang: error: linker command failed with exit code 1 (use -v to see inv">
   
     <link rel="alternative" href="/atom.xml" title="雨弓的吱言片语" type="application/atom+xml">
   
@@ -155,16 +155,16 @@
 
         
         <a href="/2019/07/25/quickjs-install-on-mac/" class="archive-article-date">
-  	<time datetime="2019-07-25T09:40:26.325Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-07-25</time>
+  	<time datetime="2019-07-25T09:55:41.786Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-07-25</time>
 </a>
         
       </header>
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>下载安装包 <a href="https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz，" target="_blank" rel="noopener">https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz，</a> 解压进入后执行make install<br><br>出现如下报错，</p>
+        <p>下载安装包 <a href="https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz，" target="_blank" rel="noopener">https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz，</a> 解压进入后执行make <br><br>出现如下报错，</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ld: symbol(s) not found for architecture i386</span><br><span class="line">clang: error: linker command failed with exit code 1 (use -v to see invocation)</span><br><span class="line">make: *** [qjs32] Error 1</span><br></pre></td></tr></table></figure>
-<p>解决方法如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Comment CONFIG_M32=y on line 37 in makefile</span><br><span class="line">将makefile 第37行注释掉</span><br><span class="line">Using the follow command to build instead of make</span><br><span class="line">用 make SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk MACOSX_DEPLOYMENT_TARGET=10.14 代替make</span><br></pre></td></tr></table></figure></p>
+<p>解决方法如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Comment CONFIG_M32=y on line 37 in makefile</span><br><span class="line">将makefile 第37行注释掉</span><br><span class="line">Using the follow command to build instead of make</span><br><span class="line"></span><br><span class="line">用 make SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk MACOSX_DEPLOYMENT_TARGET=10.14 代替make</span><br><span class="line">然后 make install即可</span><br></pre></td></tr></table></figure></p>
 
       
 
