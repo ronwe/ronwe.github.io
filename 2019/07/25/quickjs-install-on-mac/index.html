@@ -6,19 +6,19 @@
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <link rel="dns-prefetch" href="https://ronwe.github.io">
-  <title>并发时复用请求 | 雨弓的吱言片语</title>
+  <title>mac上安装quickjs的报错解决 | 雨弓的吱言片语</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存， 假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了， 其它请求的就没必要等待了未处理前并发的请求只能等一个个返回 1234567891011121314151617181920212223242526272829function fakeQuery(t)&amp;#123;	return new Promis">
+  <meta name="description" content="下载安装包 https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz， 解压进入后执行make install出现如下报错， 123ld: symbol(s) not found for architecture i386clang: error: linker command failed with exit code 1 (use -v to">
 <meta property="og:type" content="article">
-<meta property="og:title" content="并发时复用请求">
-<meta property="og:url" content="https://ronwe.github.io/2019/05/15/reuse-request-withoutkeep/index.html">
+<meta property="og:title" content="mac上安装quickjs的报错解决">
+<meta property="og:url" content="https://ronwe.github.io/2019/07/25/quickjs-install-on-mac/index.html">
 <meta property="og:site_name" content="雨弓的吱言片语">
-<meta property="og:description" content="请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存， 假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了， 其它请求的就没必要等待了未处理前并发的请求只能等一个个返回 1234567891011121314151617181920212223242526272829function fakeQuery(t)&amp;#123;	return new Promis">
+<meta property="og:description" content="下载安装包 https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz， 解压进入后执行make install出现如下报错， 123ld: symbol(s) not found for architecture i386clang: error: linker command failed with exit code 1 (use -v to">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2019-05-15T09:33:22.063Z">
+<meta property="og:updated_time" content="2019-07-25T09:40:26.325Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="并发时复用请求">
-<meta name="twitter:description" content="请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存， 假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了， 其它请求的就没必要等待了未处理前并发的请求只能等一个个返回 1234567891011121314151617181920212223242526272829function fakeQuery(t)&amp;#123;	return new Promis">
+<meta name="twitter:title" content="mac上安装quickjs的报错解决">
+<meta name="twitter:description" content="下载安装包 https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz， 解压进入后执行make install出现如下报错， 123ld: symbol(s) not found for architecture i386clang: error: linker command failed with exit code 1 (use -v to">
   
     <link rel="alternative" href="/atom.xml" title="雨弓的吱言片语" type="application/atom+xml">
   
@@ -142,31 +142,29 @@
             <canvas data-colors="#eaeaea" data-sectionHeight="100" data-contentId="js-content" id="myCanvas1" class="anm-canvas"></canvas>
           </div>
           <div id="js-content" class="content-ll">
-            <article id="post-reuse-request-withoutkeep" class="article article-type-post " itemscope="" itemprop="blogPost">
+            <article id="post-quickjs-install-on-mac" class="article article-type-post " itemscope="" itemprop="blogPost">
   <div class="article-inner">
     
       <header class="article-header">
         
   
     <h1 class="article-title" itemprop="name">
-      并发时复用请求
+      mac上安装quickjs的报错解决
     </h1>
   
 
         
-        <a href="/2019/05/15/reuse-request-withoutkeep/" class="archive-article-date">
-  	<time datetime="2019-05-15T09:33:22.063Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-15</time>
+        <a href="/2019/07/25/quickjs-install-on-mac/" class="archive-article-date">
+  	<time datetime="2019-07-25T09:40:26.325Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-07-25</time>
 </a>
         
       </header>
     
     <div class="article-entry" itemprop="articleBody">
       
-        <h3 id="请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存，-假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了，-其它请求的就没必要等待了"><a href="#请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存，-假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了，-其它请求的就没必要等待了" class="headerlink" title="请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存， 假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了， 其它请求的就没必要等待了"></a>请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存， 假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了， 其它请求的就没必要等待了</h3><p>未处理前并发的请求只能等一个个返回</p>
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">fakeQuery</span>(<span class="params">t</span>)</span>&#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line">		setTimeout(<span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">			resolve(<span class="built_in">Math</span>.random() * <span class="number">1000</span>);</span><br><span class="line">		&#125;, t*<span class="number">1000</span>);</span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Q</span>(<span class="params">p, t</span>) </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line"></span><br><span class="line">        fakeQuery(t).then( <span class="function">(<span class="params">result</span>) =&gt;</span> &#123;</span><br><span class="line">            resolve(result);</span><br><span class="line">        &#125;)</span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.time(<span class="string">'q1'</span>);</span><br><span class="line"><span class="built_in">console</span>.time(<span class="string">'q2'</span>);</span><br><span class="line">Q(<span class="string">'a'</span>, <span class="number">5</span>).then( <span class="function">(<span class="params">ret</span>) =&gt;</span> &#123;</span><br><span class="line">	<span class="built_in">console</span>.log(ret);</span><br><span class="line">	<span class="built_in">console</span>.timeEnd(<span class="string">'q1'</span>);</span><br><span class="line">&#125;);</span><br><span class="line">Q(<span class="string">'a'</span>, <span class="number">10</span>).then( <span class="function">(<span class="params">ret</span>) =&gt;</span> &#123;</span><br><span class="line"></span><br><span class="line">	<span class="built_in">console</span>.log(ret);</span><br><span class="line">	<span class="built_in">console</span>.timeEnd(<span class="string">'q2'</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
-<p>可以使用消息方式优化,node有原生的emitter,其实浏览器端也有能实现相同效果的api</p>
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyEmitter</span> <span class="keyword">extends</span> <span class="title">EventTarget</span>  </span>&#123;</span><br><span class="line">  fire(name, value) &#123;</span><br><span class="line">    <span class="keyword">this</span>.dispatchEvent(<span class="keyword">new</span> CustomEvent(name , &#123;<span class="attr">detail</span>: value&#125;));</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">fakeQuery</span>(<span class="params">t</span>)</span>&#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line">		setTimeout(<span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">			resolve(<span class="built_in">Math</span>.random() * <span class="number">1000</span>);</span><br><span class="line">		&#125;, t*<span class="number">1000</span>);</span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> emitter = <span class="keyword">new</span> MyEmitter();</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Q</span>(<span class="params">p, t</span>) </span>&#123;</span><br><span class="line"></span><br><span class="line">    fakeQuery(t).then( <span class="function">(<span class="params">result</span>) =&gt;</span> &#123;</span><br><span class="line">        emitter.fire(p, result);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line"></span><br><span class="line">	    <span class="function"><span class="keyword">function</span> <span class="title">done</span>(<span class="params">e</span>) </span>&#123;</span><br><span class="line">		   resolve(e.detail);</span><br><span class="line">		   emitter.removeEventListener(p, done);</span><br><span class="line">		&#125;;</span><br><span class="line">		emitter.addEventListener(p, done);</span><br><span class="line"></span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.time(<span class="string">'q1'</span>);</span><br><span class="line"><span class="built_in">console</span>.time(<span class="string">'q2'</span>);</span><br><span class="line">Q(<span class="string">'a'</span>, <span class="number">5</span>).then( <span class="function">(<span class="params">ret</span>) =&gt;</span> &#123;</span><br><span class="line">	<span class="built_in">console</span>.log(ret);</span><br><span class="line">	<span class="built_in">console</span>.timeEnd(<span class="string">'q1'</span>);</span><br><span class="line">&#125;);</span><br><span class="line">Q(<span class="string">'a'</span>, <span class="number">10</span>).then( <span class="function">(<span class="params">ret</span>) =&gt;</span> &#123;</span><br><span class="line">	<span class="built_in">console</span>.log(ret);</span><br><span class="line">	<span class="built_in">console</span>.timeEnd(<span class="string">'q2'</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
-<p>代码很简单，侧重在事件的思想</p>
+        <p>下载安装包 <a href="https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz，" target="_blank" rel="noopener">https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz，</a> 解压进入后执行make install<br><br>出现如下报错，</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ld: symbol(s) not found for architecture i386</span><br><span class="line">clang: error: linker command failed with exit code 1 (use -v to see invocation)</span><br><span class="line">make: *** [qjs32] Error 1</span><br></pre></td></tr></table></figure>
+<p>解决方法如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Comment CONFIG_M32=y on line 37 in makefile</span><br><span class="line">将makefile 第37行注释掉</span><br><span class="line">Using the follow command to build instead of make</span><br><span class="line">用 make SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk MACOSX_DEPLOYMENT_TARGET=10.14 代替make</span><br></pre></td></tr></table></figure></p>
 
       
 
@@ -246,7 +244,7 @@
     <a class="close js-modal-close" href="javascript:;"><i class="icon icon-close"></i></a>
     <p>扫一扫，分享到微信</p>
     <div class="wx-qrcode">
-      <img src="//pan.baidu.com/share/qrcode?url=https://ronwe.github.io/2019/05/15/reuse-request-withoutkeep/" alt="微信分享二维码">
+      <img src="//pan.baidu.com/share/qrcode?url=https://ronwe.github.io/2019/07/25/quickjs-install-on-mac/" alt="微信分享二维码">
     </div>
 </div>
 
@@ -260,18 +258,9 @@
   
 <nav id="article-nav">
   
-    <a href="/2019/07/25/quickjs-install-on-mac/" id="article-nav-newer" class="article-nav-link-wrap">
-      <i class="icon-circle-left"></i>
-      <div class="article-nav-title">
-        
-          mac上安装quickjs的报错解决
-        
-      </div>
-    </a>
   
-  
-    <a href="/2019/04/10/npm-init/" id="article-nav-older" class="article-nav-link-wrap">
-      <div class="article-nav-title">npm init 应用</div>
+    <a href="/2019/05/15/reuse-request-withoutkeep/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">并发时复用请求</div>
       <i class="icon-circle-right"></i>
     </a>
   
