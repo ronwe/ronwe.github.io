@@ -143,6 +143,73 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-sharedworker" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/09/21/sharedworker/">sharedworker使用小记</a>
+    </h1>
+  
+
+        
+        <a href="/2019/09/21/sharedworker/" class="archive-article-date">
+  	<time datetime="2019-09-21T02:42:56.289Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-09-21</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="web现在的worker挺多，web-worker到service-worker，这篇记录下shared-worker如何使用"><a href="#web现在的worker挺多，web-worker到service-worker，这篇记录下shared-worker如何使用" class="headerlink" title="web现在的worker挺多，web worker到service worker，这篇记录下shared worker如何使用"></a>web现在的worker挺多，web worker到service worker，这篇记录下shared worker如何使用</h3><p>关于shared worker ，是因为有个tab管理的需求，因为它能在tab中共享，所以调研下，具体API见 <a href="https://developer.mozilla.org/en-US/docs/Web/API/SharedWorker/SharedWorker" target="_blank" rel="noopener">https://developer.mozilla.org/en-US/docs/Web/API/SharedWorker/SharedWorker</a> <br></p>
+<p>使用还是比较简单的，在页面中代码</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> myWorker = <span class="keyword">new</span> SharedWorker(<span class="string">"worker.js"</span>);</span><br><span class="line"></span><br><span class="line">myWorker.port.start();</span><br><span class="line"></span><br><span class="line">myWorker.port.onmessage = <span class="function"><span class="keyword">function</span>(<span class="params">e</span>) </span>&#123;</span><br><span class="line">    <span class="built_in">console</span>.log(<span class="string">'Message received from worker'</span>, e.data);</span><br><span class="line">&#125;</span><br><span class="line">myWorker.port.postMessage([<span class="string">'hello'</span>, <span class="keyword">new</span> <span class="built_in">Date</span>]);</span><br></pre></td></tr></table></figure>
+<p>worker.js中代码<br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> index = <span class="number">1</span>;</span><br><span class="line">onconnect = <span class="function"><span class="keyword">function</span>(<span class="params">e</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> port = e.ports[<span class="number">0</span>];</span><br><span class="line">    <span class="keyword">var</span> i = <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    port.addEventListener(<span class="string">'message'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">e</span>) </span>&#123;</span><br><span class="line">      <span class="keyword">var</span> workerResult = <span class="string">'Result: '</span> + (index++) + <span class="string">':'</span> + (i++) + <span class="string">':'</span>  + (e.data[<span class="number">0</span>] + <span class="string">'|'</span> +  e.data[<span class="number">1</span>]);</span><br><span class="line">      port.postMessage(workerResult);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    port.start(); <span class="comment">// Required when using addEventListener. Otherwise called implicitly by onmessage setter.</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>麻烦的是管理，当你执行后想要更新worker.js会发现无法更新，管理worker在chrome面板中也无法找到（甚至是没有网络请求的，不禁想到可以用来做些坏事），<br><br>手工输入 chrome://inspect/#workers 才可以看到，worker的调试也是在这里，可以inspect ，可以terminate，但是terminate只是停止worker进程，并不能清理，要更新worker现在实现的有效方法是<br><br>var myWorker = new SharedWorker(“worker.js”); 改为 var myWorker = new SharedWorker(“worker.js?v=version string”); 更改src可以更新。<br></p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/09/21/sharedworker/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-process-lanucher" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
   <div class="article-inner">
     

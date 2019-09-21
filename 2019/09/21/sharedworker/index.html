@@ -6,19 +6,19 @@
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <link rel="dns-prefetch" href="https://ronwe.github.io">
-  <title>脚本沙盒&amp; 进程管理 | 雨弓的吱言片语</title>
+  <title>sharedworker使用小记 | 雨弓的吱言片语</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="启动的项目多了以后需要有工具管理进程一个基于carlo的GUI小工具，可以同时运行多个项目脚本，方便管理，有本地记忆功能，重启后可方便恢复,代码自取:https://github.com/ronwe/dummy">
+  <meta name="description" content="web现在的worker挺多，web worker到service worker，这篇记录下shared worker如何使用关于shared worker ，是因为有个tab管理的需求，因为它能在tab中共享，所以调研下，具体API见 https://developer.mozilla.org/en-US/docs/Web/API/SharedWorker/SharedWorker  使用还是比">
 <meta property="og:type" content="article">
-<meta property="og:title" content="脚本沙盒&amp; 进程管理">
-<meta property="og:url" content="https://ronwe.github.io/2019/08/04/process-lanucher/index.html">
+<meta property="og:title" content="sharedworker使用小记">
+<meta property="og:url" content="https://ronwe.github.io/2019/09/21/sharedworker/index.html">
 <meta property="og:site_name" content="雨弓的吱言片语">
-<meta property="og:description" content="启动的项目多了以后需要有工具管理进程一个基于carlo的GUI小工具，可以同时运行多个项目脚本，方便管理，有本地记忆功能，重启后可方便恢复,代码自取:https://github.com/ronwe/dummy">
+<meta property="og:description" content="web现在的worker挺多，web worker到service worker，这篇记录下shared worker如何使用关于shared worker ，是因为有个tab管理的需求，因为它能在tab中共享，所以调研下，具体API见 https://developer.mozilla.org/en-US/docs/Web/API/SharedWorker/SharedWorker  使用还是比">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2019-08-04T08:32:08.305Z">
+<meta property="og:updated_time" content="2019-09-21T02:42:56.289Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="脚本沙盒&amp; 进程管理">
-<meta name="twitter:description" content="启动的项目多了以后需要有工具管理进程一个基于carlo的GUI小工具，可以同时运行多个项目脚本，方便管理，有本地记忆功能，重启后可方便恢复,代码自取:https://github.com/ronwe/dummy">
+<meta name="twitter:title" content="sharedworker使用小记">
+<meta name="twitter:description" content="web现在的worker挺多，web worker到service worker，这篇记录下shared worker如何使用关于shared worker ，是因为有个tab管理的需求，因为它能在tab中共享，所以调研下，具体API见 https://developer.mozilla.org/en-US/docs/Web/API/SharedWorker/SharedWorker  使用还是比">
   
     <link rel="alternative" href="/atom.xml" title="雨弓的吱言片语" type="application/atom+xml">
   
@@ -142,27 +142,31 @@
             <canvas data-colors="#eaeaea" data-sectionHeight="100" data-contentId="js-content" id="myCanvas1" class="anm-canvas"></canvas>
           </div>
           <div id="js-content" class="content-ll">
-            <article id="post-process-lanucher" class="article article-type-post " itemscope="" itemprop="blogPost">
+            <article id="post-sharedworker" class="article article-type-post " itemscope="" itemprop="blogPost">
   <div class="article-inner">
     
       <header class="article-header">
         
   
     <h1 class="article-title" itemprop="name">
-      脚本沙盒&amp; 进程管理
+      sharedworker使用小记
     </h1>
   
 
         
-        <a href="/2019/08/04/process-lanucher/" class="archive-article-date">
-  	<time datetime="2019-08-04T08:32:08.305Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-08-04</time>
+        <a href="/2019/09/21/sharedworker/" class="archive-article-date">
+  	<time datetime="2019-09-21T02:42:56.289Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-09-21</time>
 </a>
         
       </header>
     
     <div class="article-entry" itemprop="articleBody">
       
-        <h3 id="启动的项目多了以后需要有工具管理进程"><a href="#启动的项目多了以后需要有工具管理进程" class="headerlink" title="启动的项目多了以后需要有工具管理进程"></a>启动的项目多了以后需要有工具管理进程</h3><p>一个基于carlo的GUI小工具，可以同时运行多个项目脚本，方便管理，有本地记忆功能，重启后可方便恢复,代码自取:<br><a href="https://github.com/ronwe/dummy" target="_blank" rel="noopener">https://github.com/ronwe/dummy</a></p>
+        <h3 id="web现在的worker挺多，web-worker到service-worker，这篇记录下shared-worker如何使用"><a href="#web现在的worker挺多，web-worker到service-worker，这篇记录下shared-worker如何使用" class="headerlink" title="web现在的worker挺多，web worker到service worker，这篇记录下shared worker如何使用"></a>web现在的worker挺多，web worker到service worker，这篇记录下shared worker如何使用</h3><p>关于shared worker ，是因为有个tab管理的需求，因为它能在tab中共享，所以调研下，具体API见 <a href="https://developer.mozilla.org/en-US/docs/Web/API/SharedWorker/SharedWorker" target="_blank" rel="noopener">https://developer.mozilla.org/en-US/docs/Web/API/SharedWorker/SharedWorker</a> <br></p>
+<p>使用还是比较简单的，在页面中代码</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> myWorker = <span class="keyword">new</span> SharedWorker(<span class="string">"worker.js"</span>);</span><br><span class="line"></span><br><span class="line">myWorker.port.start();</span><br><span class="line"></span><br><span class="line">myWorker.port.onmessage = <span class="function"><span class="keyword">function</span>(<span class="params">e</span>) </span>&#123;</span><br><span class="line">    <span class="built_in">console</span>.log(<span class="string">'Message received from worker'</span>, e.data);</span><br><span class="line">&#125;</span><br><span class="line">myWorker.port.postMessage([<span class="string">'hello'</span>, <span class="keyword">new</span> <span class="built_in">Date</span>]);</span><br></pre></td></tr></table></figure>
+<p>worker.js中代码<br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> index = <span class="number">1</span>;</span><br><span class="line">onconnect = <span class="function"><span class="keyword">function</span>(<span class="params">e</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> port = e.ports[<span class="number">0</span>];</span><br><span class="line">    <span class="keyword">var</span> i = <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    port.addEventListener(<span class="string">'message'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">e</span>) </span>&#123;</span><br><span class="line">      <span class="keyword">var</span> workerResult = <span class="string">'Result: '</span> + (index++) + <span class="string">':'</span> + (i++) + <span class="string">':'</span>  + (e.data[<span class="number">0</span>] + <span class="string">'|'</span> +  e.data[<span class="number">1</span>]);</span><br><span class="line">      port.postMessage(workerResult);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    port.start(); <span class="comment">// Required when using addEventListener. Otherwise called implicitly by onmessage setter.</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>麻烦的是管理，当你执行后想要更新worker.js会发现无法更新，管理worker在chrome面板中也无法找到（甚至是没有网络请求的，不禁想到可以用来做些坏事），<br><br>手工输入 chrome://inspect/#workers 才可以看到，worker的调试也是在这里，可以inspect ，可以terminate，但是terminate只是停止worker进程，并不能清理，要更新worker现在实现的有效方法是<br><br>var myWorker = new SharedWorker(“worker.js”); 改为 var myWorker = new SharedWorker(“worker.js?v=version string”); 更改src可以更新。<br></p>
 
       
 
@@ -242,7 +246,7 @@
     <a class="close js-modal-close" href="javascript:;"><i class="icon icon-close"></i></a>
     <p>扫一扫，分享到微信</p>
     <div class="wx-qrcode">
-      <img src="//pan.baidu.com/share/qrcode?url=https://ronwe.github.io/2019/08/04/process-lanucher/" alt="微信分享二维码">
+      <img src="//pan.baidu.com/share/qrcode?url=https://ronwe.github.io/2019/09/21/sharedworker/" alt="微信分享二维码">
     </div>
 </div>
 
@@ -256,18 +260,9 @@
   
 <nav id="article-nav">
   
-    <a href="/2019/09/21/sharedworker/" id="article-nav-newer" class="article-nav-link-wrap">
-      <i class="icon-circle-left"></i>
-      <div class="article-nav-title">
-        
-          sharedworker使用小记
-        
-      </div>
-    </a>
   
-  
-    <a href="/2019/07/25/quickjs-install-on-mac/" id="article-nav-older" class="article-nav-link-wrap">
-      <div class="article-nav-title">mac上安装quickjs的报错解决</div>
+    <a href="/2019/08/04/process-lanucher/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">脚本沙盒&amp; 进程管理</div>
       <i class="icon-circle-right"></i>
     </a>
   
