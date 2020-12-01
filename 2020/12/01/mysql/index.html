@@ -8,17 +8,17 @@
   <link rel="dns-prefetch" href="https://ronwe.github.io">
   <title>mysql通信协议浅解 | 雨弓的吱言片语</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="序计划通过本地代理远程mysql，尝试实现透明缓存中间件功能这个需求，在实现过程中，需要对mysql协议的请求和下发包进行解析以便进一步处理，网络上有大量关于mysql协议的文章，但过于分散，而且mysql协议在4.1版本做了大升级，本文将涉及到的一部分整理汇总，资料来自mysql官网，网络blog，和npm上的mysql模块源码。 代码部分经过nodejs的mysql模块和php的mysqli">
+  <meta name="description" content="序计划通过本地代理远程mysql，尝试实现透明缓存中间件功能这个需求，在实现过程中，需要对mysql协议的请求和下发包进行解析以便进一步处理，网络上有大量关于mysql协议的文章，但过于分散，而且mysql协议在4.1版本做了大升级，本文将涉及到的一部分整理汇总，资料来自mysql官网，网络blog，和npm上的mysql模块源码。 代码部分经过nodejs的mysql模块和php的mysqli模">
 <meta property="og:type" content="article">
 <meta property="og:title" content="mysql通信协议浅解">
 <meta property="og:url" content="https://ronwe.github.io/2020/12/01/mysql/index.html">
 <meta property="og:site_name" content="雨弓的吱言片语">
-<meta property="og:description" content="序计划通过本地代理远程mysql，尝试实现透明缓存中间件功能这个需求，在实现过程中，需要对mysql协议的请求和下发包进行解析以便进一步处理，网络上有大量关于mysql协议的文章，但过于分散，而且mysql协议在4.1版本做了大升级，本文将涉及到的一部分整理汇总，资料来自mysql官网，网络blog，和npm上的mysql模块源码。 代码部分经过nodejs的mysql模块和php的mysqli">
+<meta property="og:description" content="序计划通过本地代理远程mysql，尝试实现透明缓存中间件功能这个需求，在实现过程中，需要对mysql协议的请求和下发包进行解析以便进一步处理，网络上有大量关于mysql协议的文章，但过于分散，而且mysql协议在4.1版本做了大升级，本文将涉及到的一部分整理汇总，资料来自mysql官网，网络blog，和npm上的mysql模块源码。 代码部分经过nodejs的mysql模块和php的mysqli模">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2020-12-01T09:53:45.153Z">
+<meta property="og:updated_time" content="2020-12-01T09:54:22.975Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="mysql通信协议浅解">
-<meta name="twitter:description" content="序计划通过本地代理远程mysql，尝试实现透明缓存中间件功能这个需求，在实现过程中，需要对mysql协议的请求和下发包进行解析以便进一步处理，网络上有大量关于mysql协议的文章，但过于分散，而且mysql协议在4.1版本做了大升级，本文将涉及到的一部分整理汇总，资料来自mysql官网，网络blog，和npm上的mysql模块源码。 代码部分经过nodejs的mysql模块和php的mysqli">
+<meta name="twitter:description" content="序计划通过本地代理远程mysql，尝试实现透明缓存中间件功能这个需求，在实现过程中，需要对mysql协议的请求和下发包进行解析以便进一步处理，网络上有大量关于mysql协议的文章，但过于分散，而且mysql协议在4.1版本做了大升级，本文将涉及到的一部分整理汇总，资料来自mysql官网，网络blog，和npm上的mysql模块源码。 代码部分经过nodejs的mysql模块和php的mysqli模">
   
     <link rel="alternative" href="/atom.xml" title="雨弓的吱言片语" type="application/atom+xml">
   
@@ -155,15 +155,14 @@
 
         
         <a href="/2020/12/01/mysql/" class="archive-article-date">
-  	<time datetime="2020-12-01T09:53:45.153Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-12-01</time>
+  	<time datetime="2020-12-01T09:54:22.975Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-12-01</time>
 </a>
         
       </header>
     
     <div class="article-entry" itemprop="articleBody">
       
-        <hr>
-<h2 id="序"><a href="#序" class="headerlink" title="序"></a>序</h2><p>计划通过本地代理远程mysql，尝试实现透明缓存中间件功能这个需求，在实现过程中，需要对mysql协议的请求和下发包进行解析以便进一步处理，网络上有大量关于mysql协议的文章，但过于分散，而且mysql协议在4.1版本做了大升级，本文将涉及到的一部分整理汇总，资料来自mysql官网，网络blog，和npm上的mysql模块源码。</p>
+        <h2 id="序"><a href="#序" class="headerlink" title="序"></a>序</h2><p>计划通过本地代理远程mysql，尝试实现透明缓存中间件功能这个需求，在实现过程中，需要对mysql协议的请求和下发包进行解析以便进一步处理，网络上有大量关于mysql协议的文章，但过于分散，而且mysql协议在4.1版本做了大升级，本文将涉及到的一部分整理汇总，资料来自mysql官网，网络blog，和npm上的mysql模块源码。</p>
 <p>代码部分经过nodejs的mysql模块和php的mysqli模块验证。</p>
 <p>此次只作为对mysql协议熟悉的练习，对数据变动自动清理相应缓存建议还是使用基于binlog的解析,然后通过消息机制更新。</p>
 <a id="more"></a>
