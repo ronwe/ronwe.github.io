@@ -8,16 +8,17 @@
   <link rel="dns-prefetch" href="https://ronwe.github.io">
   <title>雨弓的吱言片语</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="日常代码收集">
-<meta property="og:type" content="website">
+  <meta name="description" content="序计划通过本地代理远程mysql，尝试实现透明缓存中间件功能这个需求，在实现过程中，需要对mysql协议的请求和下发包进行解析以便进一步处理，网络上有大量关于mysql协议的文章，但过于分散，而且mysql协议在4.1版本做了大升级，本文将涉及到的一部分整理汇总，资料来自mysql官网，网络blog，和npm上的mysql模块源码。 代码部分经过nodejs的mysql模块和php的mysqli">
+<meta property="og:type" content="article">
 <meta property="og:title" content="雨弓的吱言片语">
-<meta property="og:url" content="https://ronwe.github.io/index.html">
+<meta property="og:url" content="https://ronwe.github.io/2020/12/01/mysql/index.html">
 <meta property="og:site_name" content="雨弓的吱言片语">
-<meta property="og:description" content="日常代码收集">
+<meta property="og:description" content="序计划通过本地代理远程mysql，尝试实现透明缓存中间件功能这个需求，在实现过程中，需要对mysql协议的请求和下发包进行解析以便进一步处理，网络上有大量关于mysql协议的文章，但过于分散，而且mysql协议在4.1版本做了大升级，本文将涉及到的一部分整理汇总，资料来自mysql官网，网络blog，和npm上的mysql模块源码。 代码部分经过nodejs的mysql模块和php的mysqli">
 <meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2020-12-01T09:52:03.532Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="雨弓的吱言片语">
-<meta name="twitter:description" content="日常代码收集">
+<meta name="twitter:description" content="序计划通过本地代理远程mysql，尝试实现透明缓存中间件功能这个需求，在实现过程中，需要对mysql协议的请求和下发包进行解析以便进一步处理，网络上有大量关于mysql协议的文章，但过于分散，而且mysql协议在4.1版本做了大升级，本文将涉及到的一部分整理汇总，资料来自mysql官网，网络blog，和npm上的mysql模块源码。 代码部分经过nodejs的mysql模块和php的mysqli">
   
     <link rel="alternative" href="/atom.xml" title="雨弓的吱言片语" type="application/atom+xml">
   
@@ -141,9 +142,7 @@
             <canvas data-colors="#eaeaea" data-sectionHeight="100" data-contentId="js-content" id="myCanvas1" class="anm-canvas"></canvas>
           </div>
           <div id="js-content" class="content-ll">
-            
-  
-    <article id="post-mysql" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+            <article id="post-mysql" class="article article-type-post " itemscope="" itemprop="blogPost">
   <div class="article-inner">
     
     <div class="article-entry" itemprop="articleBody">
@@ -152,11 +151,652 @@
 <h2 id="序"><a href="#序" class="headerlink" title="序"></a>序</h2><p>计划通过本地代理远程mysql，尝试实现透明缓存中间件功能这个需求，在实现过程中，需要对mysql协议的请求和下发包进行解析以便进一步处理，网络上有大量关于mysql协议的文章，但过于分散，而且mysql协议在4.1版本做了大升级，本文将涉及到的一部分整理汇总，资料来自mysql官网，网络blog，和npm上的mysql模块源码。</p>
 <p>代码部分经过nodejs的mysql模块和php的mysqli模块验证。</p>
 <p>此次只作为对mysql协议熟悉的练习，对数据变动自动清理相应缓存建议还是使用基于binlog的解析,然后通过消息机制更新。</p>
-        
-          <a class="article-more-a" href="/2020/12/01/mysql/#more">more >></a>
-        
+<a id="more"></a>
+<hr>
+<h2 id="基本"><a href="#基本" class="headerlink" title="基本"></a>基本</h2><p>mysql链接分为TCP握手链接，服务端对客户端认证，数据交互，断开链接几个阶段。<br>服务器启动后，会使用 TCP 监听一个本地端口，当客户端的连接请求到达时，就会执行三段握手以及 MySQL 的权限验证；验证成功后，客户端开始发送请求，服务器会以响应的报文格式返回数据；当客户端发送完成后，会发送一个特殊的报文，告知服务器已结束会话。</p>
+<p>MySQL 定义了几种包类型，A) 客户端-&gt;服务器，登录时的 auth 包、执行 SQL 时的 CMD 包；B) 服务器-&gt;客户端，登录时的握手包、数据包、数据流结束包、成功包(OK Packet)、错误信息包。</p>
+<p>协议定义了基本的数据类型，如 int、string 等；数据的传送格式等。</p>
+<h3 id="一些规则"><a href="#一些规则" class="headerlink" title="一些规则"></a>一些规则</h3><p>当server端和client端数据交互时，如果数据包size大于2^24时，要将包拆成多个；<br>每个包由header和payload两部分组成；</p>
+<h3 id="认证阶段"><a href="#认证阶段" class="headerlink" title="认证阶段"></a>认证阶段</h3><pre><code>服务端 -&gt; 客户端：发送握手初始化包 (Handshake Initialization Packet)。
+客户端 -&gt; 服务端：发送验证包 (Client Authentication Packet)。
+服务端 -&gt; 客户端：认证结果消息
+</code></pre><p>mysql的认证过程相对复杂，这里简单介绍4.1版本之后的认证过程（计划功能中对这部分请求可以透明透给远程mysql，没有必要进行处理，以下内容摘自网络）。</p>
+<ol>
+<li><p>服务器发送随机字符串 (scramble) 给客户端。</p>
+</li>
+<li><p>客户端作如下计算，然后客户端将 token 发送给服务端。</p>
+<blockquote>
+<p>stage1_hash = SHA1(明文密码)</p>
+</blockquote>
+<blockquote>
+<p>token = SHA1(scramble + SHA1(stage1_hash)) XOR stage1_hash</p>
+</blockquote>
+</li>
+<li><p>服务端作如下计算，比对 SHA1(stage1_hash) 和 mysql.user.password 是否相同</p>
+<blockquote>
+<p>stage1_hash = token XOR SHA1(scramble + mysql.user.password)<br>server -&gt; client， client-&gt; server 包类型</p>
+</blockquote>
+<p> 校验时，只需要 SHA1(stage1_hash) 与 mysql.user.password 比较一下即可</p>
+</li>
+</ol>
+<p>handshake包(protocol41)</p>
+<table>
+<thead>
+<tr>
+<th>Bytes</th>
+<th>Name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>protocol_version</td>
+</tr>
+<tr>
+<td>n</td>
+<td>(Null-Terminated String)   server_version</td>
+</tr>
+<tr>
+<td>4</td>
+<td>thread_id</td>
+</tr>
+<tr>
+<td>8</td>
+<td>scramble_buff</td>
+</tr>
+<tr>
+<td>1</td>
+<td>(filler) always 0x00</td>
+</tr>
+<tr>
+<td>2</td>
+<td>server_capabilities</td>
+</tr>
+<tr>
+<td>1</td>
+<td>server_language</td>
+</tr>
+<tr>
+<td>2</td>
+<td>server_status</td>
+</tr>
+<tr>
+<td>13</td>
+<td>(filler) always 0x00 …</td>
+</tr>
+<tr>
+<td>13</td>
+<td>rest of scramble_buff (4.1)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="获得use-db"><a href="#获得use-db" class="headerlink" title="获得use db"></a>获得use db</h3><p> 对本次需求只需要取出初始化mysql链接的时候会初始化使用哪个库(use database;),需要从包里解出，其它部分忽略。</p>
+<pre><code>function parseHandShake(buff){
+    let _check_pos = buff.indexOf(Buffer.alloc(23,0x00));
+    if (_check_pos &gt; 0){
+        //protocol41
+        buff =  buff.slice(_check_pos + 23);
+        protocol41 = true;
+    }
+    //find user field end
+    _check_pos = buff.indexOf(0x00);
+    buff =  buff.slice(_check_pos + 1);
+    if (protocol41) {
+        buff =  buff.slice(21);     
+    } else {
+        buff =  buff.slice(10);     
+    }
+    _check_pos = buff.indexOf(0x00);
+
+
+    let default_db = buff.slice(0, _check_pos).toString();
+ }
+</code></pre><hr>
+<h2 id="query请求-封包"><a href="#query请求-封包" class="headerlink" title="query请求 封包"></a>query请求 封包</h2><p>client到server的包（Command Packet ），由两部分构成：header 和 payload。header包括3位整数表示payload长度，1位整数表示顺序号；payload包括1位COM标识符和请求sql语句</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>int<3></3></td>
+<td>payload_length</td>
+<td>payload的长度</td>
+</tr>
+<tr>
+<td>int<1></1></td>
+<td>sequence_id</td>
+<td>顺序号，每次从0开始</td>
+</tr>
+<tr>
+<td>string<var></var></td>
+<td>payload</td>
+<td>COM + sql ，COM_QUERY 标识符为0x03</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<table>
+<thead>
+<tr>
+<th>header</th>
+<th>sequence</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>01 00 00</td>
+<td>00</td>
+<td>03 xx xx…</td>
+</tr>
+<tr>
+<td>length 1</td>
+<td>sequence_id 0</td>
+<td>payload [0x03,Buffer from sql string …]</td>
+</tr>
+</tbody>
+</table>
+<p>部分代码</p>
+<pre><code> var MAX_PACKET_LENGTH = Math.pow(2, 24) - 1;
+ var buffer = Buffer.from(sql);
+
+ for (var packet = 0; packet &lt; packets; packet++) {
+        var isLast = (packet + 1 === packets);
+    var packetLength = (isLast)
+           ? length % MAX_PACKET_LENGTH
+           : MAX_PACKET_LENGTH;
+
+       var packetNumber = incrementPacketNumber();
+
+       this.writeUnsignedNumber(3, packetLength);
+       this.writeUnsignedNumber(1, packetNumber);
+
+       var start = packet * MAX_PACKET_LENGTH;
+       var end   = start + packetLength;
+
+       this.writeBuffer(buffer.slice(start, end));
+}
+</code></pre><p>writeUnsignedNumber用来把包长度和序号写入packet header</p>
+<pre><code>function writeUnsignedNumber(bytes, value) {
+       for (var i = 0; i &lt; bytes; i++) {
+       this._buffer[this._offset++] = (value &gt;&gt; (i * 8)) &amp; 0xff
+       }
+}
+</code></pre><p>当header的长度小于MAX_PACKET_LENGTH时表示包传输完成，极端情况下会多传个空包过去（正好整分）。</p>
+<p>通常sql不长的情况下，只需要一个包就可以。</p>
+<pre><code>ComQueryPacket.prototype.write = function write(){
+    let _sql_buff = Buffer.from(this.sql),
+        _cmd_len = Buffer.byteLength(this.sql),
+        _buff = Buffer.alloc(_cmd_len + 1 + 3 + 1);    
+
+    _sql_buff.copy(_buff , 5);
+
+    this._buffer = _buff;
+    this.writeUnsignedNumber(4, _cmd_len+1);
+    this.writeUnsignedNumber(1, this.command);
+
+
+    return this._buffer; 
+}
+</code></pre><hr>
+<h2 id="query返回-解包"><a href="#query返回-解包" class="headerlink" title="query返回 解包"></a>query返回 解包</h2><p>从服务器发往客户端的数据包有四种：成功报告包以及错误消息包，数据结束包、数据包。</p>
+<ul>
+<li>0x00: Packets.OkPacket</li>
+<li>0xff: Packets.ErrorPacket</li>
+<li>0xfe: Packets.EofPacket</li>
+<li>其它</li>
+</ul>
+<h3 id="处理逻辑"><a href="#处理逻辑" class="headerlink" title="处理逻辑"></a>处理逻辑</h3><pre><code>let first = data.readUInt8(4)，    //探测包类型
+    last = data.readUInt8(Buffer.byteLength(data) -1); //用来检测字符串类型数据是否传输完成
+
+if (first === 0xff) {
+    //查询错误
+} else if (first === 0x00) {
+    //查询OK，这里可以解析握手包等
+} else {
+    //数据包
+    //NullTerminatedString（Null结尾方式）: 字符串以遇到Null作为结束标志，相应的字节为00
+    if (last === 0x00 ){ 
+        //检查数据包中列信息和数据信息是否都接收完成
+    }
+}
+</code></pre><h3 id="OK-Packet"><a href="#OK-Packet" class="headerlink" title="OK Packet"></a>OK Packet</h3><p>Payload</p>
+<table>
+<thead>
+<tr>
+<th>相对包内容的位置</th>
+<th>长度（字节）</th>
+<th>名称</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>1</td>
+<td>包头标识</td>
+<td>0x00 代表这是一个OK 包</td>
+</tr>
+<tr>
+<td>1</td>
+<td>rows_len</td>
+<td>影响行数</td>
+<td>相应操作影响的行数，比如一个Update操作的记录是5条，那么这个值就为5</td>
+</tr>
+<tr>
+<td>1 + rows_len</td>
+<td>id_len</td>
+<td>自增id</td>
+<td>插入一条记录时，如果是自增id的话，返回的id值</td>
+</tr>
+<tr>
+<td>1 + rows_len + id_len</td>
+<td>2</td>
+<td>服务器状态</td>
+<td>用于表示服务器状态，比如是否是事务模式或者自动提交模式</td>
+</tr>
+<tr>
+<td>3 + rows_len + id_len</td>
+<td>2</td>
+<td>警告数</td>
+<td>上次命令引起的警告数</td>
+</tr>
+<tr>
+<td>5 + rows_len + id_len</td>
+<td>msg_len</td>
+<td>额外信息</td>
+<td>此次操作的一些额外信息</td>
+</tr>
+</tbody>
+</table>
+<h3 id="Error-Packet"><a href="#Error-Packet" class="headerlink" title="Error Packet"></a>Error Packet</h3><p>Payload</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>int<1> [ff]</1></td>
+<td>header</td>
+<td>header of the ERR packet</td>
+</tr>
+<tr>
+<td>int<2></2></td>
+<td>error_code</td>
+<td>错误码</td>
+</tr>
+<tr>
+<td>if capabilities &amp; CLIENT_PROTOCOL_41 {</td>
+</tr>
+<tr>
+<td>string[1]</td>
+<td>sql_state_marker</td>
+<td># marker of the SQL State</td>
+</tr>
+<tr>
+<td>string[5]</td>
+<td>sql_state</td>
+<td>SQL State</td>
+</tr>
+<tr>
+<td>} </td>
+</tr>
+<tr>
+<td>string<eof></eof></td>
+<td>error_message</td>
+<td>报错信息</td>
+</tr>
+</tbody>
+</table>
+<h3 id="Result-Set-Packet"><a href="#Result-Set-Packet" class="headerlink" title="Result Set Packet"></a>Result Set Packet</h3><p>Result Set包产生于我们每次数据库执行需要返回结果集的时候，Server端发送给我们的包，比如平常的SELECT,SHOW等命令，Result Set包相对比较复杂，查询结果的完整内容由：<br>列数量信息 + 列包 + EOF包 + 行包 + EOF包，这五部分组成。</p>
+<table>
+<thead>
+<tr>
+<th>内容</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Result Set Header</td>
+<td>返回数据的字段(列)数量</td>
+</tr>
+<tr>
+<td>Field</td>
+<td>返回数据的列信息（多个）</td>
+</tr>
+<tr>
+<td>EOF</td>
+<td>列结束</td>
+</tr>
+<tr>
+<td>Row Data</td>
+<td>行数据（多个）</td>
+</tr>
+<tr>
+<td>EOF</td>
+<td>数据结束</td>
+</tr>
+</tbody>
+</table>
+<p>例子 SELECT @@version_comment查询的返回结果：</p>
+<pre><code>01 00 00 01 01|27 00 00    02 03 64 65 66 00 00 00    .....&apos;....def...
+11 40 40 76 65 72 73 69    6f 6e 5f 63 6f 6d 6d 65    .@@version_comme
+6e 74 00 0c 08 00 1c 00    00 00 fd 00 00 1f 00 00|   nt..............
+05 00 00 03 fe 00 00 02    00|1d 00 00 04 1c 4d 79    ..............My
+53 51 4c 20 43 6f 6d 6d    75 6e 69 74 79 20 53 65    SQL Community Se
+72 76 65 72 20 28 47 50    4c 29|05 00 00 05 fe 00    rver (GPL)......
+00 02 00                                              ...
+</code></pre><p>VERSION 4.0</p>
+<table>
+<thead>
+<tr>
+<th>Bytes</th>
+<th>Name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>n (Length Coded String)</td>
+<td>table</td>
+</tr>
+<tr>
+<td>n (Length Coded String)</td>
+<td>name</td>
+</tr>
+<tr>
+<td>4 (Length Coded Binary)</td>
+<td>length</td>
+</tr>
+<tr>
+<td>2 (Length Coded Binary)</td>
+<td>type</td>
+</tr>
+<tr>
+<td>2 (Length Coded Binary)</td>
+<td>flags</td>
+</tr>
+<tr>
+<td>1</td>
+<td>decimals</td>
+</tr>
+<tr>
+<td>n (Length Coded Binary)</td>
+<td>default</td>
+</tr>
+</tbody>
+</table>
+<p>VERSION 4.1</p>
+<table>
+<thead>
+<tr>
+<th>Bytes</th>
+<th>Name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>n (Length Coded String)</td>
+<td>catalog</td>
+</tr>
+<tr>
+<td>n (Length Coded String)</td>
+<td>db</td>
+</tr>
+<tr>
+<td>n (Length Coded String)</td>
+<td>table</td>
+</tr>
+<tr>
+<td>n (Length Coded String)</td>
+<td>org_table 原表名</td>
+</tr>
+<tr>
+<td>n (Length Coded String)</td>
+<td>name</td>
+</tr>
+<tr>
+<td>n (Length Coded String)</td>
+<td>org_name 原字段名</td>
+</tr>
+<tr>
+<td>(filler)            0c</td>
+<td></td>
+</tr>
+<tr>
+<td>charsetnr           08 00</td>
+<td></td>
+</tr>
+<tr>
+<td>n (Length Coded String)</td>
+<td>length</td>
+</tr>
+<tr>
+<td>n (Length Coded String)</td>
+<td>type</td>
+</tr>
+<tr>
+<td>n (Length Coded String)</td>
+<td>flags</td>
+</tr>
+<tr>
+<td>n (Length Coded String)</td>
+<td>decimals</td>
+</tr>
+<tr>
+<td>(filler) 00 00</td>
+</tr>
+</tbody>
+</table>
+<p> 处理代码：</p>
+<pre><code>/*
+* 解析字段信息
+* @param Buffer 
+* @result Object 
+*/
+function parseColDef(buff){
+    let _stack = _parseLine(buff);
+    if (_stack.length &lt; 2) return false;
+    if (!_stack) return false;
+    if (_stack[0] === &apos;def&apos;){
+        //protocol41
+        return {
+            &apos;db&apos; : _stack[1],
+            &apos;table&apos; : _stack[2],
+            &apos;table_full&apos; : _stack[3],
+            &apos;field&apos; : _stack[4],
+            &apos;field_full&apos; : _stack[5]
+        };    
+    }else{
+        return {
+            &apos;table&apos; : _stack[0],
+            &apos;field&apos; : _stack[1],
+        };
+    }
+}
+
+/*
+* 解析行数据
+* @param Buffer 
+* @result Array 
+*/
+function parseColVal(buff){
+    let _stack = _parseLine(buff);
+    return _stack;
+}
+
+function _parseLine(buff){
+    let _stack = [];
+    for(let i=0,j=buff.length ; i &lt; j ; i++){
+        let _len = buff[i].toString() * 1;
+        let _content = buff.slice(i+1, i+ 1 + _len  );
+        _stack.push(_content.toString());
+        i += _len;  
+    }
+    return _stack;
+}
+
+
+function Parser(options) {
+    options = options || {};
+    this.reset(options);
+}
+
+Parser.prototype.reset = function(options){
+    this._header = [];
+    this._body = [];
+    this._parsed_columns = [];
+    this._parsed_col_vals = [];
+    this.header_len = 4;
+    this._head_set = false;
+    this._body_set = false;
+    this._reset();
+}
+Parser.prototype._reset = function(){
+    this._buffer = Buffer.alloc(0);
+    this._offset = 0;
+}
+
+//将字段部分和数据部分分开存放
+Parser.prototype._put = function(chunk){
+    if (0 === chunk.length) return;
+    if (this._head_set){
+        this._body.push(chunk);
+    }else{
+        this._header.push(chunk);
+    }
+}
+
+//获得result packet
+Parser.prototype.write = function(chunk ,to_parse){
+    if (this._body_set) return false;
+    this._buffer = Buffer.concat([this._buffer,chunk]);
+    this._offset = 0;
+    this._process(to_parse);
+}
+
+Parser.prototype._process = function(to_parse){
+    let _header_len = this.header_len;
+    while(true){
+        if (this._buffer.length === 0 ){
+            break;
+        }
+        let _len = this.parseUnsignedNumber(3),
+            _number = this.parseUnsignedNumber(1);
+        if ((_len + _header_len) &gt; this._buffer.length){
+            break;
+        }
+        let _piece = this._buffer.slice(0,_len + _header_len), 
+            _first = _piece.readUInt8(4);
+
+        this._put(_piece);
+        if (0xfe === _first){
+            if (!this._head_set){
+                this._head_set = true;    
+                this._parsed_col_vals = [];
+                for (let _m = 0,_n = this._parsed_columns.length; _m &lt; _n ; _m++){
+                    this._parsed_col_vals.push([]);
+                }
+
+            }else{
+                this._body_set = true;
+            }
+        } else if(to_parse){
+            if (!this._head_set){
+                let _column = parseColDef(_piece.slice(_header_len));
+                if (_column){
+                    this._parsed_columns.push(_column.field);
+                }
+            }else{
+                let _col_val = parseColVal(_piece.slice(_header_len));
+                for(let _m=0,_n=_col_val.length; _m &lt; _n;_m++){
+                    this._parsed_col_vals[_m].push(_col_val[_m]);    
+                } 
+            }
+        }
+
+        this._buffer = this._buffer.slice(_piece.length );
+
+        this._offset = 0;
+    }
+}
+
+//读取解析后数据
+Parser.prototype.read = function(){
+    return {
+        head : this._header,
+        body : this._body,
+        headed : this._head_set,
+        bodyed : this._body_set,
+        columns : this._parsed_columns,
+        columns_vals : this._parsed_col_vals
+    }
+}
+
+
+//写入数字类型信息
+Parser.prototype.parseUnsignedNumber = function parseUnsignedNumber(bytes) {
+    if (bytes === 1) {
+        return this._buffer[this._offset++];
+    }
+
+    var buffer = this._buffer;
+    var offset = this._offset + bytes - 1;
+    var value  = 0;
+
+    if (bytes &gt; 4) {
+        var err    = new Error(&apos;parseUnsignedNumber: Supports only up to 4 bytes&apos;);
+        err.offset = (this._offset - this._packetOffset - 1);
+        err.code   = &apos;PARSER_UNSIGNED_TOO_LONG&apos;;
+        throw err;
+    }
+
+    while (offset &gt;= this._offset) {
+        value = ((value &lt;&lt; 8) | buffer[offset]) &gt;&gt;&gt; 0;
+        offset--;
+    }
+
+    this._offset += bytes;
+
+    return value;
+}; 
+</code></pre><hr>
+<h2 id="资料"><a href="#资料" class="headerlink" title="资料"></a>资料</h2><p><a href="https://dev.mysql.com/doc/internals/en/text-protocol.html" target="_blank" rel="noopener">https://dev.mysql.com/doc/internals/en/text-protocol.html</a><br><a href="https://blog.csdn.net/caisini_vc/article/details/5356136" target="_blank" rel="noopener">https://blog.csdn.net/caisini_vc/article/details/5356136</a><br><a href="https://jin-yang.github.io/post/mysql-protocol.html" target="_blank" rel="noopener">https://jin-yang.github.io/post/mysql-protocol.html</a></p>
+<p>HandShake:<br><a href="https://my.oschina.net/alchemystar/blog/833598" target="_blank" rel="noopener">https://my.oschina.net/alchemystar/blog/833598</a> ,  <a href="https://my.oschina.net/alchemystar/blog/833598" target="_blank" rel="noopener">https://my.oschina.net/alchemystar/blog/833598</a></p>
+<p>com标识:<br><a href="https://dev.mysql.com/doc/internals/en/text-protocol.html" target="_blank" rel="noopener">https://dev.mysql.com/doc/internals/en/text-protocol.html</a></p>
+
       
 
+      
+        <div class="page-reward">
+          <a href="javascript:;" class="page-reward-btn tooltip-top">
+            <div class="tooltip tooltip-east">
+            <span class="tooltip-item">
+              赏
+            </span>
+            <span class="tooltip-content">
+              <span class="tooltip-text">
+                <span class="tooltip-inner">
+                  <p class="reward-p"><i class="icon icon-quo-left"></i>谢谢你请我吃糖果<i class="icon icon-quo-right"></i></p>
+                  <div class="reward-box">
+                    
+                    
+                  </div>
+                </span>
+              </span>
+            </span>
+          </div>
+          </a>
+        </div>
       
     </div>
     <div class="article-info article-info-index">
@@ -165,16 +805,75 @@
       
 
       
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2020/12/01/mysql/">展开全文 >></a>
-        </p>
-      
 
+      
+        
+<div class="share-btn share-icons tooltip-left">
+  <div class="tooltip tooltip-east">
+    <span class="tooltip-item">
+      <a href="javascript:;" class="share-sns share-outer">
+        <i class="icon icon-share"></i>
+      </a>
+    </span>
+    <span class="tooltip-content">
+      <div class="share-wrap">
+        <div class="share-icons">
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="icon icon-weibo"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="icon icon-weixin"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="icon icon-qq"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="icon icon-douban"></i>
+          </a>
+          <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a>
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="icon icon-facebook"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="icon icon-twitter"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="icon icon-google"></i>
+          </a>
+        </div>
+      </div>
+    </span>
+  </div>
+</div>
+
+<div class="page-modal wx-share js-wx-box">
+    <a class="close js-modal-close" href="javascript:;"><i class="icon icon-close"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//pan.baidu.com/share/qrcode?url=https://ronwe.github.io/2020/12/01/mysql/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div class="mask js-mask"></div>
       
       <div class="clearfix"></div>
     </div>
   </div>
 </article>
+
+  
+<nav id="article-nav">
+  
+  
+    <a href="/2020/10/13/promise/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">实现Promise 练习</div>
+      <i class="icon-circle-right"></i>
+    </a>
+  
+</nav>
+
 
 <aside class="wrap-side-operation">
     <div class="mod-side-operation">
@@ -194,623 +893,14 @@
 
 
 
-
-  
-    <article id="post-promise" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2020/10/13/promise/">实现Promise 练习</a>
-    </h1>
-  
-
-        
-        <a href="/2020/10/13/promise/" class="archive-article-date">
-  	<time datetime="2020-10-13T11:12:36.113Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-10-13</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h3 id="模仿实现Promise，实现了简单的all-race方法"><a href="#模仿实现Promise，实现了简单的all-race方法" class="headerlink" title="模仿实现Promise，实现了简单的all, race方法"></a>模仿实现Promise，实现了简单的all, race方法</h3><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span>* <span class="title">promiseState</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  <span class="keyword">yield</span> <span class="string">'start'</span>;</span><br><span class="line">  <span class="keyword">while</span> (<span class="literal">true</span>) &#123;</span><br><span class="line">    <span class="keyword">let</span> reg = <span class="keyword">yield</span> <span class="string">'pend'</span>;</span><br><span class="line">    <span class="keyword">if</span> (!reg) &#123;</span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">yield</span> <span class="string">'fin'</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Xpromise</span>(<span class="params">xFn</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">this</span>.res = <span class="literal">null</span>;</span><br><span class="line">  <span class="keyword">this</span>.error = <span class="literal">null</span>;</span><br><span class="line">  <span class="keyword">this</span>.succCallBack = [];</span><br><span class="line">  <span class="keyword">this</span>.errorCallBack = [];</span><br><span class="line"></span><br><span class="line">  <span class="keyword">this</span>.state =  promiseState();</span><br><span class="line">  <span class="keyword">this</span>.stateNow = <span class="keyword">this</span>.state.next();</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  <span class="keyword">this</span>.processSucc = processCallBacks.bind(<span class="keyword">this</span>, <span class="keyword">this</span>.succCallBack, <span class="literal">true</span>);</span><br><span class="line">  <span class="keyword">this</span>.processFail = processCallBacks.bind(<span class="keyword">this</span>, <span class="keyword">this</span>.errorCallBack, <span class="literal">false</span>);</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">function</span> <span class="title">processCallBacks</span>(<span class="params">callBacks, isSucc</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="literal">true</span> !== <span class="keyword">this</span>.stateNow.done) &#123;</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (<span class="number">0</span> === callBacks.length) &#123;</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">   <span class="comment">//放入微任务队列，https://developer.mozilla.org/zh-CN/docs/Web/API/HTML_DOM_API/Microtask_guide</span></span><br><span class="line">    queueMicrotask(<span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">      <span class="keyword">let</span> callBacksStack = callBacks.splice(<span class="number">0</span>, callBacks.length);</span><br><span class="line">      callBacksStack.forEach( <span class="function"><span class="params">callBackFn</span> =&gt;</span> callBackFn(isSucc? <span class="keyword">this</span>.res : <span class="keyword">this</span>.error));</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> resolver = <span class="function">(<span class="params">res</span>) =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="literal">true</span> === <span class="keyword">this</span>.stateNow.done) &#123;</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">this</span>.res = res;</span><br><span class="line">    <span class="keyword">this</span>.state.next(); <span class="comment">//可能调用then之前resolve的，让状态机多走一步</span></span><br><span class="line">    <span class="keyword">this</span>.stateNow = <span class="keyword">this</span>.state.next();</span><br><span class="line">    <span class="keyword">this</span>.processSucc();</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">let</span> rejecter = <span class="function">(<span class="params">err</span>) =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="literal">true</span> === <span class="keyword">this</span>.stateNow.done) &#123;</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">this</span>.error = err;</span><br><span class="line">    <span class="keyword">this</span>.state.next();</span><br><span class="line">    <span class="keyword">this</span>.stateNow = <span class="keyword">this</span>.state.next();</span><br><span class="line">    <span class="keyword">this</span>.processFail();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    xFn(resolver, rejecter);</span><br><span class="line">  &#125; <span class="keyword">catch</span>(err) &#123;</span><br><span class="line">    rejecter(err);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Xpromise.all = <span class="function"><span class="keyword">function</span>(<span class="params">...fns</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="keyword">new</span> Xpromise(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">let</span> counter = fns.length;</span><br><span class="line">    <span class="keyword">let</span> results = [];</span><br><span class="line">    fns.forEach( <span class="function">(<span class="params">fn, index</span>) =&gt;</span> &#123;</span><br><span class="line">      <span class="keyword">new</span> Xpromise(fn).then( <span class="function"><span class="params">res</span> =&gt;</span> &#123;</span><br><span class="line">        results[index] = res;</span><br><span class="line">        counter--;</span><br><span class="line">        <span class="keyword">if</span> (counter === <span class="number">0</span>) &#123;</span><br><span class="line">          resolve(results);</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;).catch( <span class="function"><span class="params">err</span> =&gt;</span> &#123;</span><br><span class="line">        reject(err);</span><br><span class="line">      &#125;);</span><br><span class="line">    &#125;);</span><br><span class="line">  &#125;);</span><br><span class="line">&#125;</span><br><span class="line">Xpromise.race = <span class="function"><span class="keyword">function</span>(<span class="params">...fns</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="keyword">new</span> Xpromise(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line">    fns.forEach( <span class="function">(<span class="params">fn, index</span>) =&gt;</span> &#123;</span><br><span class="line">      <span class="keyword">new</span> Xpromise(fn).then( <span class="function"><span class="params">res</span> =&gt;</span> &#123;</span><br><span class="line">        resolve(res);</span><br><span class="line">      &#125;).catch( <span class="function"><span class="params">err</span> =&gt;</span> &#123;</span><br><span class="line">        reject(err);</span><br><span class="line">      &#125;);</span><br><span class="line">    &#125;);</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line">Xpromise.prototype = &#123;</span><br><span class="line">  then: <span class="function"><span class="keyword">function</span>(<span class="params">cbk</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">this</span>.succCallBack.push(cbk)</span><br><span class="line">    <span class="keyword">this</span>.stateNow = <span class="keyword">this</span>.state.next(<span class="literal">true</span>);</span><br><span class="line">    <span class="keyword">this</span>.processSucc();</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">this</span>;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="keyword">catch</span>: <span class="function"><span class="keyword">function</span>(<span class="params">cbk</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">this</span>.errorCallBack.push(cbk);</span><br><span class="line">    <span class="keyword">this</span>.stateNow = <span class="keyword">this</span>.state.next();</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">this</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">////////Promise代码结束，以下为使用测试</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.log(<span class="string">'----begin-----'</span>);</span><br><span class="line"><span class="keyword">new</span> Xpromise(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line">  <span class="comment">//resolve(456);</span></span><br><span class="line">  setTimeout(<span class="function"><span class="params">()</span> =&gt;</span> reject(<span class="string">'abc'</span>), <span class="number">1000</span>);</span><br><span class="line">&#125;).then(<span class="function">(<span class="params">result</span>) =&gt;</span> &#123;</span><br><span class="line">  <span class="built_in">console</span>.log(<span class="string">'result'</span>, result);</span><br><span class="line">&#125;).catch(<span class="function">(<span class="params">err</span>) =&gt;</span> &#123;</span><br><span class="line">  <span class="built_in">console</span>.log(<span class="string">'error'</span>, err);</span><br><span class="line">&#125;)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">Xpromise.all(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line">   <span class="comment">//resolve(456);</span></span><br><span class="line">  setTimeout(<span class="function"><span class="params">()</span> =&gt;</span> resolve(<span class="number">123</span>), <span class="number">1000</span>);</span><br><span class="line">&#125;, (resolve, reject) =&gt; &#123;</span><br><span class="line">   resolve(<span class="number">456</span>);</span><br><span class="line">&#125;).then(<span class="function">(<span class="params">result</span>) =&gt;</span> &#123;</span><br><span class="line">  <span class="built_in">console</span>.log(<span class="string">'result'</span>, result);</span><br><span class="line">&#125;).catch(<span class="function">(<span class="params">err</span>) =&gt;</span> &#123;</span><br><span class="line">  <span class="built_in">console</span>.log(<span class="string">'error'</span>, error);</span><br><span class="line">&#125;)</span><br><span class="line"><span class="built_in">console</span>.log(<span class="string">'-----end------'</span>);</span><br></pre></td></tr></table></figure>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2020/10/13/promise/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-marque" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/12/26/marque/">无缝滚动</a>
-    </h1>
-  
-
-        
-        <a href="/2019/12/26/marque/" class="archive-article-date">
-  	<time datetime="2019-12-26T06:10:08.009Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-12-26</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h3 id="向上无缝滚动，数据可以随意打乱"><a href="#向上无缝滚动，数据可以随意打乱" class="headerlink" title="向上无缝滚动，数据可以随意打乱"></a>向上无缝滚动，数据可以随意打乱</h3><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br></pre></td><td class="code"><pre><span class="line">&lt;html&gt;</span><br><span class="line">&lt;body&gt;</span><br><span class="line">&lt;style&gt;</span><br><span class="line">.marqueUp &#123;</span><br><span class="line">  width: <span class="number">300</span>px;</span><br><span class="line">  height:<span class="number">50</span>px;</span><br><span class="line">  border: <span class="number">1</span>px solid red;</span><br><span class="line">  </span><br><span class="line">&#125;</span><br><span class="line">.pre, .show&#123;</span><br><span class="line">  width: <span class="number">300</span>px;</span><br><span class="line">  height:<span class="number">50</span>px;</span><br><span class="line">  background: rgba(<span class="number">221</span>, <span class="number">215</span>, <span class="number">215</span>, <span class="number">.5</span>);</span><br><span class="line">  border-bottom: <span class="number">1</span>px solid blue;</span><br><span class="line">&#125;</span><br><span class="line">.marque div&#123;</span><br><span class="line">  animation: <span class="number">3</span>s marqueUp;</span><br><span class="line">  animation-fill-mode: forwards;</span><br><span class="line">&#125;</span><br><span class="line">@keyframes marqueUp&#123;</span><br><span class="line">  <span class="number">0</span>% &#123;<span class="attr">transform</span>: translateY(<span class="number">0</span>px); &#125;</span><br><span class="line">  <span class="number">100</span>% &#123; <span class="attr">transform</span>: translateY(<span class="number">-50</span>px); &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&lt;<span class="regexp">/style&gt;</span></span><br><span class="line"><span class="regexp">&lt;div class="marqueUp"&gt;</span></span><br><span class="line"><span class="regexp">  &lt;div class="pre"&gt;&lt;/</span>div&gt;</span><br><span class="line">  &lt;div <span class="class"><span class="keyword">class</span></span>=<span class="string">"show"</span>&gt;&lt;/div&gt;</span><br><span class="line">&lt;<span class="regexp">/div&gt;</span></span><br><span class="line"><span class="regexp">&lt;/</span>body&gt;</span><br><span class="line">&lt;script&gt;</span><br><span class="line"><span class="keyword">var</span> marqueUp = <span class="built_in">document</span>.querySelector(<span class="string">'.marqueUp'</span>)</span><br><span class="line"><span class="keyword">var</span> pre = <span class="built_in">document</span>.querySelector(<span class="string">'.pre'</span>, marqueUp)</span><br><span class="line"><span class="keyword">var</span> show = <span class="built_in">document</span>.querySelector(<span class="string">'.show'</span>, marqueUp)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> mockes = [</span><br><span class="line">  &#123;<span class="attr">id</span>: <span class="number">1</span>, <span class="attr">txt</span>: <span class="string">'aaa'</span>&#125;,</span><br><span class="line">  &#123;<span class="attr">id</span>: <span class="number">2</span>, <span class="attr">txt</span>: <span class="string">'bbb'</span>&#125;,</span><br><span class="line">  &#123;<span class="attr">id</span>: <span class="number">3</span>, <span class="attr">txt</span>: <span class="string">'ccc'</span>&#125;,</span><br><span class="line">  &#123;<span class="attr">id</span>: <span class="number">5</span>, <span class="attr">txt</span>: <span class="string">'eee'</span>&#125;,</span><br><span class="line">  &#123;<span class="attr">id</span>: <span class="number">6</span>, <span class="attr">txt</span>: <span class="string">'fff'</span>&#125;,</span><br><span class="line">  &#123;<span class="attr">id</span>: <span class="number">7</span>, <span class="attr">txt</span>: <span class="string">'7777'</span>&#125;,</span><br><span class="line">  &#123;<span class="attr">id</span>: <span class="number">10</span>, <span class="attr">txt</span>: <span class="string">'100000'</span>&#125;,</span><br><span class="line">  &#123;<span class="attr">id</span>: <span class="number">12</span>, <span class="attr">txt</span>: <span class="string">'1222'</span>&#125;,</span><br><span class="line">  &#123;<span class="attr">id</span>: <span class="number">13</span>, <span class="attr">txt</span>: <span class="string">'1333'</span>&#125;,</span><br><span class="line">  &#123;<span class="attr">id</span>: <span class="number">23</span>, <span class="attr">txt</span>: <span class="string">'22333'</span>&#125;,</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> marquePreItem</span><br><span class="line"><span class="keyword">var</span> marqueShowItem</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> fetchData = <span class="literal">null</span> </span><br><span class="line"><span class="keyword">var</span> marqueData = mockes.slice(<span class="number">0</span>, <span class="number">5</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> i = <span class="number">0</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">mockFetchData</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">  setTimeout(<span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">    fetchData = mockes.filter(<span class="function"><span class="params">item</span> =&gt;</span> <span class="built_in">Math</span>.random() &gt; <span class="number">0.3</span>)</span><br><span class="line">    <span class="built_in">console</span>.log(<span class="string">'fetchData'</span>, fetchData)</span><br><span class="line">    <span class="keyword">if</span> (i++ &lt; 5) &#123;</span><br><span class="line">      mockFetchData();</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;, Math.random() * 5000)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">function checkMarqueDataUpdated()&#123;</span><br><span class="line">  if (null === fetchData) &#123;</span><br><span class="line">    return false </span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  var index = fetchData.findIndex( item =&gt; item.id === marqueShowItem.id)</span><br><span class="line">  if (-1 === index &amp;&amp; marquePreItem) &#123;</span><br><span class="line">    index = fetchData.findIndex( item =&gt; item.id === marquePreItem.id)</span><br><span class="line">  &#125;</span><br><span class="line">  if (-1 !== index) &#123;</span><br><span class="line">    marqueData = fetchData.slice(index + 1).concat(fetchData.slice(0, index + 1))  </span><br><span class="line">  &#125; else &#123;</span><br><span class="line">    marqueData = fetchData.slice()</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  return true</span><br><span class="line">&#125;</span><br><span class="line">function exeMarqueUp() &#123;</span><br><span class="line">  var toShowItem = marqueData.shift() </span><br><span class="line">  if (!toShowItem) &#123;</span><br><span class="line">    return</span><br><span class="line">  &#125;</span><br><span class="line">  marqueShowItem = toShowItem</span><br><span class="line"></span><br><span class="line">  marqueUp.classList.remove('marque')</span><br><span class="line">  pre.innerHTML = marquePreItem ? marquePreItem.txt : ''</span><br><span class="line">  show.innerHTML = marqueShowItem.txt</span><br><span class="line">  function onAnimateEnd()&#123;</span><br><span class="line">    marqueUp.removeEventListener('webkitAnimationEnd', onAnimateEnd)</span><br><span class="line">    //检查更新</span><br><span class="line">    var updated = checkMarqueDataUpdated()</span><br><span class="line">    marquePreItem = marqueShowItem</span><br><span class="line">    if (false === updated) &#123;</span><br><span class="line">      marqueData.push(marqueShowItem)</span><br><span class="line">    &#125;</span><br><span class="line">    setTimeout(exeMarqueUp, 1000)</span><br><span class="line">  &#125;</span><br><span class="line">  marqueUp.addEventListener('webkitAnimationEnd', onAnimateEnd)</span><br><span class="line">  setTimeout(function()&#123;</span><br><span class="line">    marqueUp.classList.add('marque')</span><br><span class="line">  &#125;, 1)</span><br><span class="line">&#125;</span><br><span class="line">exeMarqueUp()</span><br><span class="line">mockFetchData()</span><br><span class="line">&lt;/script&gt;</span><br><span class="line">&lt;<span class="regexp">/html&gt;</span></span><br></pre></td></tr></table></figure>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/12/26/marque/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-sharedworker" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/09/21/sharedworker/">sharedworker使用小记</a>
-    </h1>
-  
-
-        
-        <a href="/2019/09/21/sharedworker/" class="archive-article-date">
-  	<time datetime="2019-09-21T02:42:56.289Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-09-21</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h3 id="web现在的worker挺多，web-worker到service-worker，这篇记录下shared-worker如何使用"><a href="#web现在的worker挺多，web-worker到service-worker，这篇记录下shared-worker如何使用" class="headerlink" title="web现在的worker挺多，web worker到service worker，这篇记录下shared worker如何使用"></a>web现在的worker挺多，web worker到service worker，这篇记录下shared worker如何使用</h3><p>关于shared worker ，是因为有个tab管理的需求，因为它能在tab中共享，所以调研下，具体API见 <a href="https://developer.mozilla.org/en-US/docs/Web/API/SharedWorker/SharedWorker" target="_blank" rel="noopener">https://developer.mozilla.org/en-US/docs/Web/API/SharedWorker/SharedWorker</a> <br></p>
-<p>使用还是比较简单的，在页面中代码</p>
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> myWorker = <span class="keyword">new</span> SharedWorker(<span class="string">"worker.js"</span>);</span><br><span class="line"></span><br><span class="line">myWorker.port.start();</span><br><span class="line"></span><br><span class="line">myWorker.port.onmessage = <span class="function"><span class="keyword">function</span>(<span class="params">e</span>) </span>&#123;</span><br><span class="line">    <span class="built_in">console</span>.log(<span class="string">'Message received from worker'</span>, e.data);</span><br><span class="line">&#125;</span><br><span class="line">myWorker.port.postMessage([<span class="string">'hello'</span>, <span class="keyword">new</span> <span class="built_in">Date</span>]);</span><br></pre></td></tr></table></figure>
-<p>worker.js中代码<br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> index = <span class="number">1</span>;</span><br><span class="line">onconnect = <span class="function"><span class="keyword">function</span>(<span class="params">e</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> port = e.ports[<span class="number">0</span>];</span><br><span class="line">    <span class="keyword">var</span> i = <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    port.addEventListener(<span class="string">'message'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">e</span>) </span>&#123;</span><br><span class="line">      <span class="keyword">var</span> workerResult = <span class="string">'Result: '</span> + (index++) + <span class="string">':'</span> + (i++) + <span class="string">':'</span>  + (e.data[<span class="number">0</span>] + <span class="string">'|'</span> +  e.data[<span class="number">1</span>]);</span><br><span class="line">      port.postMessage(workerResult);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    port.start(); <span class="comment">// Required when using addEventListener. Otherwise called implicitly by onmessage setter.</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>麻烦的是管理，当你执行后想要更新worker.js会发现无法更新，管理worker在chrome面板中也无法找到（甚至是没有网络请求的，不禁想到可以用来做些坏事），<br><br>手工输入 chrome://inspect/#workers 才可以看到，worker的调试也是在这里，可以inspect ，可以terminate，但是terminate只是停止worker进程，并不能清理，要更新worker现在实现的有效方法是<br><br>var myWorker = new SharedWorker(“worker.js”); 改为 var myWorker = new SharedWorker(“worker.js?v=version string”); 更改src可以更新。<br></p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/09/21/sharedworker/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-process-lanucher" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/08/04/process-lanucher/">脚本沙盒&amp; 进程管理</a>
-    </h1>
-  
-
-        
-        <a href="/2019/08/04/process-lanucher/" class="archive-article-date">
-  	<time datetime="2019-08-04T08:32:08.305Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-08-04</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h3 id="启动的项目多了以后需要有工具管理进程"><a href="#启动的项目多了以后需要有工具管理进程" class="headerlink" title="启动的项目多了以后需要有工具管理进程"></a>启动的项目多了以后需要有工具管理进程</h3><p>一个基于carlo的GUI小工具，可以同时运行多个项目脚本，方便管理，有本地记忆功能，重启后可方便恢复,代码自取:<br><a href="https://github.com/ronwe/dummy" target="_blank" rel="noopener">https://github.com/ronwe/dummy</a></p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/08/04/process-lanucher/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-quickjs-install-on-mac" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/07/25/quickjs-install-on-mac/">mac上安装quickjs的报错解决</a>
-    </h1>
-  
-
-        
-        <a href="/2019/07/25/quickjs-install-on-mac/" class="archive-article-date">
-  	<time datetime="2019-07-25T09:55:41.786Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-07-25</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>下载安装包 <a href="https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz，" target="_blank" rel="noopener">https://bellard.org/quickjs/quickjs-2019-07-09.tar.xz，</a> 解压进入后执行make <br><br>出现如下报错，</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ld: symbol(s) not found for architecture i386</span><br><span class="line">clang: error: linker command failed with exit code 1 (use -v to see invocation)</span><br><span class="line">make: *** [qjs32] Error 1</span><br></pre></td></tr></table></figure>
-<p>解决方法如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Comment CONFIG_M32=y on line 37 in makefile</span><br><span class="line">将makefile 第37行注释掉</span><br><span class="line">Using the follow command to build instead of make</span><br><span class="line"></span><br><span class="line">用 make SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk MACOSX_DEPLOYMENT_TARGET=10.14 代替make</span><br><span class="line">然后 make install即可</span><br></pre></td></tr></table></figure></p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/07/25/quickjs-install-on-mac/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-reuse-request-withoutkeep" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/05/15/reuse-request-withoutkeep/">并发时复用请求</a>
-    </h1>
-  
-
-        
-        <a href="/2019/05/15/reuse-request-withoutkeep/" class="archive-article-date">
-  	<time datetime="2019-05-15T09:33:22.063Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-15</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h3 id="请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存，-假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了，-其它请求的就没必要等待了"><a href="#请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存，-假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了，-其它请求的就没必要等待了" class="headerlink" title="请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存， 假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了， 其它请求的就没必要等待了"></a>请求的复用很多都是基于缓存的方案，要下次请求时再应用缓存， 假设存在这么个情况，接口返回很慢，而且会并发，但接口是幂等的，就是说其实有一个请求返回了， 其它请求的就没必要等待了</h3><p>未处理前并发的请求只能等一个个返回</p>
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">fakeQuery</span>(<span class="params">t</span>)</span>&#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line">		setTimeout(<span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">			resolve(<span class="built_in">Math</span>.random() * <span class="number">1000</span>);</span><br><span class="line">		&#125;, t*<span class="number">1000</span>);</span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Q</span>(<span class="params">p, t</span>) </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line"></span><br><span class="line">        fakeQuery(t).then( <span class="function">(<span class="params">result</span>) =&gt;</span> &#123;</span><br><span class="line">            resolve(result);</span><br><span class="line">        &#125;)</span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.time(<span class="string">'q1'</span>);</span><br><span class="line"><span class="built_in">console</span>.time(<span class="string">'q2'</span>);</span><br><span class="line">Q(<span class="string">'a'</span>, <span class="number">5</span>).then( <span class="function">(<span class="params">ret</span>) =&gt;</span> &#123;</span><br><span class="line">	<span class="built_in">console</span>.log(ret);</span><br><span class="line">	<span class="built_in">console</span>.timeEnd(<span class="string">'q1'</span>);</span><br><span class="line">&#125;);</span><br><span class="line">Q(<span class="string">'a'</span>, <span class="number">10</span>).then( <span class="function">(<span class="params">ret</span>) =&gt;</span> &#123;</span><br><span class="line"></span><br><span class="line">	<span class="built_in">console</span>.log(ret);</span><br><span class="line">	<span class="built_in">console</span>.timeEnd(<span class="string">'q2'</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
-<p>可以使用消息方式优化,node有原生的emitter,其实浏览器端也有能实现相同效果的api</p>
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyEmitter</span> <span class="keyword">extends</span> <span class="title">EventTarget</span>  </span>&#123;</span><br><span class="line">  fire(name, value) &#123;</span><br><span class="line">    <span class="keyword">this</span>.dispatchEvent(<span class="keyword">new</span> CustomEvent(name , &#123;<span class="attr">detail</span>: value&#125;));</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">fakeQuery</span>(<span class="params">t</span>)</span>&#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line">		setTimeout(<span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">			resolve(<span class="built_in">Math</span>.random() * <span class="number">1000</span>);</span><br><span class="line">		&#125;, t*<span class="number">1000</span>);</span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> emitter = <span class="keyword">new</span> MyEmitter();</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Q</span>(<span class="params">p, t</span>) </span>&#123;</span><br><span class="line"></span><br><span class="line">    fakeQuery(t).then( <span class="function">(<span class="params">result</span>) =&gt;</span> &#123;</span><br><span class="line">        emitter.fire(p, result);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line"></span><br><span class="line">	    <span class="function"><span class="keyword">function</span> <span class="title">done</span>(<span class="params">e</span>) </span>&#123;</span><br><span class="line">		   resolve(e.detail);</span><br><span class="line">		   emitter.removeEventListener(p, done);</span><br><span class="line">		&#125;;</span><br><span class="line">		emitter.addEventListener(p, done);</span><br><span class="line"></span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.time(<span class="string">'q1'</span>);</span><br><span class="line"><span class="built_in">console</span>.time(<span class="string">'q2'</span>);</span><br><span class="line">Q(<span class="string">'a'</span>, <span class="number">5</span>).then( <span class="function">(<span class="params">ret</span>) =&gt;</span> &#123;</span><br><span class="line">	<span class="built_in">console</span>.log(ret);</span><br><span class="line">	<span class="built_in">console</span>.timeEnd(<span class="string">'q1'</span>);</span><br><span class="line">&#125;);</span><br><span class="line">Q(<span class="string">'a'</span>, <span class="number">10</span>).then( <span class="function">(<span class="params">ret</span>) =&gt;</span> &#123;</span><br><span class="line">	<span class="built_in">console</span>.log(ret);</span><br><span class="line">	<span class="built_in">console</span>.timeEnd(<span class="string">'q2'</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
-<p>代码很简单，侧重在事件的思想</p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/05/15/reuse-request-withoutkeep/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-npm-init" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/04/10/npm-init/">npm init 应用</a>
-    </h1>
-  
-
-        
-        <a href="/2019/04/10/npm-init/" class="archive-article-date">
-  	<time datetime="2019-04-10T07:22:49.665Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-04-10</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        在研究web components的开发工具时，发现其中stencil.js这个工具的初始化用的是：
-
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm init stencil</span><br></pre></td></tr></table></figure>
-
-会响应交互
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">? Pick a starter › - Use arrow-keys. Return to submit.</span><br><span class="line"></span><br><span class="line">❯  ionic-pwa     Everything you need to build fast, production ready PWAs</span><br><span class="line">   app           Minimal starter <span class="keyword">for</span> building a Stencil app or website</span><br><span class="line">   component     Collection <span class="keyword">of</span> web components that can be used anywhere</span><br></pre></td></tr></table></figure>
-
-之前只用npm init来初始化package.json, 用来初始项目还没玩过，google找到一篇介绍npm的blog,  创建 ~/.npm-init.js 文件可以自定义npm init 行为
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> desc = prompt(<span class="string">'description?'</span>, <span class="string">'A new package...'</span>)</span><br><span class="line"><span class="keyword">const</span> bar = prompt(<span class="string">'bar?'</span>, <span class="string">''</span>)</span><br><span class="line"><span class="keyword">const</span> count = prompt(<span class="string">'count?'</span>, <span class="string">'42'</span>)</span><br><span class="line"></span><br><span class="line"><span class="built_in">module</span>.exports = &#123;</span><br><span class="line">  key: <span class="string">'value'</span>,</span><br><span class="line">  foo: &#123;</span><br><span class="line">    bar: bar,</span><br><span class="line">    count: count</span><br><span class="line">  &#125;,</span><br><span class="line">  name: prompt(<span class="string">'name?'</span>, process.cwd().split(<span class="string">'/'</span>).pop()),</span><br><span class="line">  version: prompt(<span class="string">'version?'</span>, <span class="string">'0.1.0'</span>),</span><br><span class="line">  description: desc,</span><br><span class="line">  main: <span class="string">'index.js'</span>,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-在其它目录下执行 npm init 将会得到这样的 package.json:
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="string">"key"</span>: <span class="string">"value"</span>,</span><br><span class="line">  <span class="string">"foo"</span>: &#123;</span><br><span class="line">    <span class="string">"bar"</span>: <span class="string">""</span>,</span><br><span class="line">    <span class="string">"count"</span>: <span class="string">"42"</span></span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">"name"</span>: <span class="string">"hello"</span>,</span><br><span class="line">  <span class="string">"version"</span>: <span class="string">"0.1.0"</span>,</span><br><span class="line">  <span class="string">"description"</span>: <span class="string">"A new package..."</span>,</span><br><span class="line">  <span class="string">"main"</span>: <span class="string">"index.js"</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-那stencil.js是这么实现的吗，查找.npm-init.js 并未找到.  <br>
-换个思路 npm init 后跟什么都可以吗？ 尝试执行 npm init abc  <br>
-得到这么个错误
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">npm ERR! code E404</span><br><span class="line">npm ERR! <span class="number">404</span> Not Found: create-abc@latest</span><br><span class="line"></span><br><span class="line">npm ERR! A complete log <span class="keyword">of</span> <span class="keyword">this</span> run can be found <span class="keyword">in</span>:</span><br><span class="line">npm ERR!     <span class="regexp">/Users/</span>rongweiwei/.npm/_logs/<span class="number">2019</span><span class="number">-04</span><span class="number">-10</span>T07_09_28_527Z-debug.log</span><br><span class="line">安装 create-abc@latest 失败，错误代码：<span class="number">1</span></span><br></pre></td></tr></table></figure>
-
-发现它是去拉取create-abc这个安装包，查看错误日志，确定执行的命令
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">0</span> info it worked <span class="keyword">if</span> it ends <span class="keyword">with</span> ok</span><br><span class="line"><span class="number">1</span> verbose cli [ <span class="string">'/usr/local/bin/node'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'/usr/local/lib/node_modules/npm/bin/npm-cli.js'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'install'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'create-abc@latest'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'--global'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'--prefix'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'/Users/rongweiwei/.npm/_npx/98626'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'--loglevel'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'error'</span>,</span><br><span class="line"><span class="number">1</span> verbose cli   <span class="string">'--json'</span> ]</span><br></pre></td></tr></table></figure>
-
-疑问解开了，原来npm init + 参数 等于执行 npx create-参数,执行 npx create-stenci ，果然如此 <br>
-
-补充：npx 这个命令是一键执行远程,可以玩下这个彩蛋:  <b>npx workin-hard</b>
-
-
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/04/10/npm-init/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-nginx-try-files-bug" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/02/20/nginx-try-files-bug/">nginx try_files的一个小坑</a>
-    </h1>
-  
-
-        
-        <a href="/2019/02/20/nginx-try-files-bug/" class="archive-article-date">
-  	<time datetime="2019-02-20T02:26:14.223Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-02-20</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>nginx做node的反向代理，打算实现如果node挂掉了，nginx继续提供静态服务，原以为proxy_intercept_errors打开，设下error_page就好，配置如下</p>
-<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">location</span> / &#123;</span><br><span class="line">    <span class="attribute">proxy_pass</span> http://127.0.0.1:3000;</span><br><span class="line">    <span class="attribute">proxy_intercept_errors</span> <span class="literal">on</span>;</span><br><span class="line">    <span class="attribute">proxy_redirect</span> <span class="literal">off</span>;</span><br><span class="line">    <span class="attribute">error_page</span> <span class="number">500</span> <span class="number">502</span>  <span class="variable">@handle_error</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="attribute">location</span>  <span class="variable">@handle_error</span> &#123;</span><br><span class="line">    <span class="attribute">root</span> html;</span><br><span class="line">    <span class="attribute">try_files</span> <span class="variable">$uri</span> <span class="variable">$uri</span>/ /index.html;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>  try_files $uri $uri/ /index.html @404 = 404; 是希望如果访问/abc.txt 如果html下有就返回 否则返回默认的index.html。 <br> </p>
-<p>如果path有指定内容都很正常，当path 为/ 时，问题出现了，nginx报502，打开error_log，发现有两条记录:  </p>
-<h3 id="http-127-0-0-1-3000-和-http-127-0-0-1-3000-index-html"><a href="#http-127-0-0-1-3000-和-http-127-0-0-1-3000-index-html" class="headerlink" title="http://127.0.0.1:3000/ 和 http://127.0.0.1:3000/index.html  "></a><a href="http://127.0.0.1:3000/" target="_blank" rel="noopener">http://127.0.0.1:3000/</a> 和 <a href="http://127.0.0.1:3000/index.html" target="_blank" rel="noopener">http://127.0.0.1:3000/index.html</a>  <br></h3><p>  开始以为是try_files使用不当（try_files最后一个参数会做个内部转向），将配置改成：<br></p>
-<h3 id="try-files-uri-uri-index-html-404-404"><a href="#try-files-uri-uri-index-html-404-404" class="headerlink" title="try_files $uri $uri/ /index.html @404 = 404;  "></a>try_files $uri $uri/ /index.html @404 = 404;  <br></h3><p>  依然502，尝试google也没找到解答，而且配置改成  try_files $uri $uri/ /blahblah.html @404 = 404; 依然是有个 <a href="http://127.0.0.1:3000/index.html" target="_blank" rel="noopener">http://127.0.0.1:3000/index.html</a><br>的错误 导致502.  <br></p>
-<p>  最后灵光一现 会不会是$uri等于/ try_files时 $uri/ ==&gt; / ==&gt; /index.html(这个是nginx的默认文件), 修改下去掉 $uri/ 果然好了  <br></p>
-<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">location</span> / &#123;</span><br><span class="line">    <span class="attribute">proxy_pass</span> http://127.0.0.1:3000;</span><br><span class="line">    <span class="attribute">proxy_intercept_errors</span> <span class="literal">on</span>;</span><br><span class="line">    <span class="attribute">proxy_redirect</span> <span class="literal">off</span>;</span><br><span class="line">    <span class="attribute">error_page</span> <span class="number">500</span> <span class="number">502</span>  <span class="variable">@handle_error</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="attribute">location</span>  <span class="variable">@handle_error</span> &#123;</span><br><span class="line">    <span class="attribute">root</span> html;</span><br><span class="line">    <span class="attribute">try_files</span> <span class="variable">$uri</span> /index.html /<span class="number">404</span>.html = <span class="number">404</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/02/20/nginx-try-files-bug/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-magic-object" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/02/03/magic-object/">魔术对象</a>
-    </h1>
-  
-
-        
-        <a href="/2019/02/03/magic-object/" class="archive-article-date">
-  	<time datetime="2019-02-03T07:25:29.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-02-03</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        继续尝试Proxy，在模版中套数据结构，经常会有接口没返回约定字段的情况，之前在模版中是要先判断下，利用proxy就可以忽视了
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">observe</span>(<span class="params">origin, watcher</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">let</span> keyChain = [];</span><br><span class="line">    <span class="keyword">let</span> prevTarget = [];</span><br><span class="line">    <span class="function"><span class="keyword">function</span> <span class="title">magicObj</span>(<span class="params">obj</span>) </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (<span class="string">'object'</span> !== <span class="keyword">typeof</span> obj) &#123;</span><br><span class="line">            <span class="keyword">return</span> obj;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">let</span> handler = &#123;</span><br><span class="line">            <span class="keyword">set</span>: (target, key, value) =&gt; &#123;</span><br><span class="line">                keyChain.push(key);</span><br><span class="line">                <span class="built_in">Reflect</span>.set(target, key, value);</span><br><span class="line">                watcher &amp;&amp; watcher(keyChain);</span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="keyword">get</span>: (target, key) =&gt; &#123;</span><br><span class="line">                <span class="keyword">if</span> (target === origin) &#123;</span><br><span class="line">                    keyChain.length = <span class="number">0</span>;</span><br><span class="line">                    prevTarget.length = <span class="number">0</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                prevTarget.push(target);</span><br><span class="line">                keyChain.push(key);</span><br><span class="line">                <span class="keyword">if</span> ([<span class="string">'push'</span>, <span class="string">'pop'</span>, <span class="string">'unshift'</span>, <span class="string">'shift'</span>].includes(key)) &#123;</span><br><span class="line">                    <span class="keyword">let</span> opTarget = target;</span><br><span class="line">                    <span class="keyword">if</span> (!target[key]) &#123;</span><br><span class="line">                        <span class="comment">// 强转当前节点成数组</span></span><br><span class="line">                        opTarget = prevTarget[prevTarget.length - <span class="number">2</span>][keyChain[keyChain.length - <span class="number">2</span>]] =  magicObj([], watcher);</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">return</span> <span class="function"><span class="keyword">function</span>(<span class="params">pushIn</span>) </span>&#123;</span><br><span class="line">                        opTarget[key]( magicObj(pushIn, watcher) );</span><br><span class="line">                        watcher &amp;&amp; watcher(keyChain.slice(<span class="number">0</span>, <span class="number">-2</span>));</span><br><span class="line">                        <span class="keyword">return</span> opTarget;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125; <span class="keyword">else</span> <span class="keyword">if</span> (key <span class="keyword">in</span> target) &#123;</span><br><span class="line">                    <span class="keyword">return</span> target[key];</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    <span class="comment">// 类型错了，屏蔽模版报错</span></span><br><span class="line">                    <span class="keyword">if</span> ([<span class="string">'map'</span>, <span class="string">'forEach'</span>].includes(key)) &#123;</span><br><span class="line">                        <span class="keyword">return</span> <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">                            <span class="keyword">return</span> magicObj([], watcher);</span><br><span class="line">                        &#125;;</span><br><span class="line">                    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                        target[key] = magicObj(&#123;&#125;, watcher);</span><br><span class="line"></span><br><span class="line">                        <span class="keyword">return</span> target[key];</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">let</span> proxy = <span class="keyword">new</span> <span class="built_in">Proxy</span>(obj, handler);</span><br><span class="line">        <span class="keyword">return</span> proxy;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> magicObj(origin);</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">let</span> o = &#123;&#125;;</span><br><span class="line"><span class="keyword">let</span> p = observe(o , (keys) =&gt; &#123;</span><br><span class="line">	<span class="built_in">console</span>.log(<span class="string">'change'</span>,keys);</span><br><span class="line">&#125;);</span><br><span class="line">p.x.y.z = <span class="number">123</span>; <span class="comment">//随意层级</span></span><br><span class="line">p.list.push(&#123;<span class="attr">aa</span>: <span class="number">123</span>&#125;);</span><br><span class="line">p.list.push(&#123;<span class="attr">aa</span>: <span class="number">456</span>&#125;);</span><br></pre></td></tr></table></figure>
-
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/02/03/magic-object/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
   
   
-    <nav id="page-nav">
-      <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" href="/page/2/">Next &raquo;</a>
-    </nav>
+  
+
+  
+
+  
+
   
 
 
@@ -833,8 +923,8 @@
     <script>
 	var yiliaConfig = {
 		mathjax: false,
-		isHome: true,
-		isPost: false,
+		isHome: false,
+		isPost: true,
 		isArchive: false,
 		isTag: false,
 		isCategory: false,
